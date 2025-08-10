@@ -20,7 +20,7 @@ export default function Columns({ articles }: { articles: Article[] }) {
   const { left, center, right } = groupArticles(articles)
 
   return (
-    <div className="min-h-[70vh] w-full">
+    <div className="min-h-screen w-full bg-gradient-to-r from-blue-50 via-gray-50 to-red-50">
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Column title="Liberal" border="border-blue-600" items={left} colorClass="text-blue-700" />
@@ -49,8 +49,8 @@ function Column({ title, border, items, colorClass }: { title: string; border: s
               className="block rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-colors p-3"
             >
               <div className="text-xs text-gray-500 mb-1">{a.source}</div>
-              <div className="text-sm font-medium line-clamp-2 mb-1">{a.title}</div>
-              <div className="text-xs text-gray-600 line-clamp-2">{a.snippet}</div>
+              <div className="text-sm font-medium mb-2 leading-snug">{a.title}</div>
+              <div className="text-xs text-gray-600 line-clamp-3">{a.snippet}</div>
             </a>
           </li>
         ))}

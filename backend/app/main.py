@@ -50,8 +50,8 @@ async def search(q: str = Query(..., min_length=2)):
             "articles": []
         }
     
-    # Use real Google search when API keys are available
-    items = await search_news(q, num=10)
+    # Use real Google search when API keys are available - fetch more for better diversity
+    items = await search_news(q, num=20)
     articles: list[Article] = []
     for it in items:
         link = it.get("link") or it.get("formattedUrl")

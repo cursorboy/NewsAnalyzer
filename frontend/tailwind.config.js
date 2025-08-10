@@ -1,5 +1,11 @@
-// Tailwind CSS v4 uses the new preset setup. For basic config, export empty object.
+/** @type {import('tailwindcss').Config} */
 export default {
-  // Use class strategy for dark mode
-  darkMode: 'class',
-}; 
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+} 
