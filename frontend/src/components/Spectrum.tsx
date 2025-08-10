@@ -4,13 +4,14 @@ import { motion } from 'framer-motion'
 export function Spectrum({ articles }: { articles: Article[] }) {
   return (
     <div className="relative w-full h-[70vh] overflow-hidden">
+      {/* Blue (Liberal) on the left, Red (Conservative) on the right */}
       <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-gray-100 to-red-500" />
       <div className="absolute inset-0 pointer-events-none select-none">
-        <div className="absolute left-2 top-2 bg-white/90 text-xs px-2 py-1 rounded">left leaning</div>
-        <div className="absolute right-2 top-2 bg-white/90 text-xs px-2 py-1 rounded">right leaning</div>
-        <div className="absolute left-2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Far Left</div>
-        <div className="absolute right-2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Far Right</div>
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Center</div>
+        <div className="absolute left-2 top-2 bg-white/90 text-xs px-2 py-1 rounded">Liberal</div>
+        <div className="absolute right-2 top-2 bg-white/90 text-xs px-2 py-1 rounded">Conservative</div>
+        <div className="absolute left-2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Liberal</div>
+        <div className="absolute right-2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Conservative</div>
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Neutral</div>
       </div>
       
       {articles.length === 0 ? (
