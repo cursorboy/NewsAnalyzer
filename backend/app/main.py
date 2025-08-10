@@ -35,47 +35,6 @@ class SearchResponse(BaseModel):
     articles: List[Article]
 
 
-# Demo data for testing when no API keys are configured
-DEMO_ARTICLES = [
-    {
-        "url": "https://www.reuters.com/world/us/demo-article-1",
-        "title": "Economic Policy Changes Announced by Administration",
-        "snippet": "The administration announced new economic policies affecting trade and taxation.",
-        "source": "reuters.com",
-        "spectrum_score": 0.0,
-        "confidence": 0.9,
-        "method": "outlet"
-    },
-    {
-        "url": "https://www.foxnews.com/politics/demo-article-2", 
-        "title": "Conservative Analysis of New Policies",
-        "snippet": "Critics argue the new policies will harm business growth and economic freedom.",
-        "source": "foxnews.com",
-        "spectrum_score": 0.6,
-        "confidence": 0.9,
-        "method": "outlet"
-    },
-    {
-        "url": "https://www.nytimes.com/politics/demo-article-3",
-        "title": "Progressive Perspective on Economic Reforms",
-        "snippet": "Supporters say the policies will reduce inequality and help working families.",
-        "source": "nytimes.com", 
-        "spectrum_score": -0.4,
-        "confidence": 0.9,
-        "method": "outlet"
-    },
-    {
-        "url": "https://www.wsj.com/economy/demo-article-4",
-        "title": "Market Response to Policy Announcements",
-        "snippet": "Financial markets showed mixed reactions to the policy changes.",
-        "source": "wsj.com",
-        "spectrum_score": 0.2,
-        "confidence": 0.9,
-        "method": "outlet"
-    }
-]
-
-
 @app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -85,10 +44,10 @@ async def health():
 async def search(q: str = Query(..., min_length=2)):
     # Check if Google API is configured
     if not settings.google_api_key or not settings.google_cse_id:
-        # Return demo data for testing
+        # Return empty results when no API keys are configured
         return {
             "query": q,
-            "articles": [Article(**article) for article in DEMO_ARTICLES]
+            "articles": []
         }
     
     # Use real Google search when API keys are available

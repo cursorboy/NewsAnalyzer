@@ -16,8 +16,8 @@ export function Spectrum({ articles }: { articles: Article[] }) {
       {articles.length === 0 ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="bg-white/90 rounded-lg p-6 text-center">
-            <p className="text-gray-600">No articles found. Try a different search term.</p>
-            <p className="text-sm text-gray-500 mt-2">Make sure to configure Google API keys in the backend.</p>
+            <p className="text-gray-600">No articles found for this search.</p>
+            <p className="text-sm text-gray-500 mt-2">Try a different search term or check back later.</p>
           </div>
         </div>
       ) : (
