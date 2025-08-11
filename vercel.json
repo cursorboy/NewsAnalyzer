@@ -1,30 +1,15 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "backend/app/main.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "15mb"
-      }
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "buildCommand": "cd frontend && npm ci && npm run build",
-        "distDir": "frontend/dist"
-      }
+  "functions": {
+    "backend/app/main.py": {
+      "runtime": "python3.9"
     }
-  ],
-  "routes": [
+  },
+  "buildCommand": "cd frontend && npm ci && npm run build",
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/backend/app/main.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/dist/$1"
+      "source": "/api/(.*)",
+      "destination": "/backend/app/main.py"
     }
   ]
 }
