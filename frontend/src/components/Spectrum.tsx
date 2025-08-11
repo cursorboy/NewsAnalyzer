@@ -1,4 +1,4 @@
-import type { Article } from '../lib/api'
+import type { Article } from '../lib/api.ts'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 

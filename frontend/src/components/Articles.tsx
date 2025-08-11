@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { listArticles } from '../lib/api'
-import type { Article } from '../lib/api'
+import { listArticles } from '../lib/api.ts'
+import type { Article } from '../lib/api.ts'
 export default function Articles() {
   const [items, setItems] = useState<Article[]>([])
   const [error, setError] = useState<string | null>(null)

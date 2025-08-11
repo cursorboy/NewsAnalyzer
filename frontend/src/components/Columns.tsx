@@ -1,4 +1,4 @@
-import type { Article } from '../lib/api'
+import type { Article } from '../lib/api.ts'
 
 type Groups = {
   left: Article[]

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { Article } from '../lib/api'
-import { searchArticles } from '../lib/api'
+import type { Article } from '../lib/api.ts'
+import { searchArticles } from '../lib/api.ts'
 
 export interface GameState {
   score: number

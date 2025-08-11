@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react'
-import type { Article } from '../lib/api'
+import type { Article } from '../lib/api.ts'
 
 interface ArticlesContextType {
   cachedArticles: { [query: string]: Article[] }
