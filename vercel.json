@@ -9,7 +9,7 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "buildCommand": "npm ci && npm run build",
+        "buildCommand": "npm install && npm run build",
         "distDir": "dist"
       }
     }
