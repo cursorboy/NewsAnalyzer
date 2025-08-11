@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { getArticleDetail } from '../lib/api.ts'
-import type { ArticleDetail as Detail } from '../lib/api.ts'
+import { getArticleDetail } from '../lib'
+import type { ArticleDetail as Detail } from '../lib'
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts'
 
 export default function ArticleDetail() {

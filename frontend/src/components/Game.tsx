@@ -1,8 +1,8 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import type { Article } from '../lib/api.ts'
-import { searchArticles } from '../lib/api.ts'
+import type { Article } from '../lib'
+import { searchArticles } from '../lib'
 import { useArticles } from '../context/ArticlesContext'
 
 interface GameState {

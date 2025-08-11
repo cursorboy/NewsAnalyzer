@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { listArticles } from '../lib/api.ts'
-import type { Article } from '../lib/api.ts'
-import { getNarratives } from '../lib/api.ts'
-import type { Narrative } from '../lib/api.ts'
+import { listArticles } from '../lib'
+import type { Article } from '../lib'
+import { getNarratives } from '../lib'
+import type { Narrative } from '../lib'
 export default function Narratives() {
   const [narratives, setNarratives] = useState<Narrative[]>([])
   const [articles, setArticles] = useState<Record<string, Article>>({})

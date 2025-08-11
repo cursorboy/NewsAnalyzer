@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAPIStatus, type APIStatus } from '../lib/api.ts'
+import { getAPIStatus, type APIStatus } from '../lib'
 
 export default function APIStatusDashboard() {
   const [status, setStatus] = useState<APIStatus | null>(null)

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { searchArticles } from '../lib/api.ts'
+import { searchArticles } from '../lib'
 
 export function useSearch(query: string) {
   return useQuery({
