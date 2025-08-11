@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, useNavigate, useSearchParams } from 'reac
 import { useState } from 'react'
 import './index.css'
 import { useSearch } from './hooks/useSearch'
-import { searchArticles } from './lib'
+import { searchArticles } from './lib/api'
 import { Spectrum } from './components/Spectrum'
 import { LoadingSpectrum } from './components/LoadingSpectrum'
 import Columns from './components/Columns'
