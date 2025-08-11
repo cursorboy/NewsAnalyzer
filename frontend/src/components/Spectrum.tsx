@@ -1,9 +1,12 @@
 import type { Article } from '../lib/api'
 import { motion } from 'framer-motion'
+import { useState } from 'react'
 
 export function Spectrum({ articles }: { articles: Article[] }) {
+  const [selectedArticle, setSelectedArticle] = useState<string | null>(null)
+  const hasSelection = selectedArticle !== null
   return (
-    <div className="relative w-full min-h-screen overflow-hidden">
+    <div className="relative w-full h-full min-h-[calc(100vh-80px)] overflow-hidden">
       {/* Blue (Liberal) on the left, Red (Conservative) on the right */}
       <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-gray-100 to-red-500" />
       <div className="absolute inset-0 pointer-events-none select-none">
@@ -12,6 +15,13 @@ export function Spectrum({ articles }: { articles: Article[] }) {
         <div className="absolute left-2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Liberal</div>
         <div className="absolute right-2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Conservative</div>
         <div className="absolute left-1/2 -translate-x-1/2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Neutral</div>
+        
+        {/* Instructions */}
+        {!hasSelection && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-white px-4 py-2 rounded-lg text-sm text-center pointer-events-none">
+            💡 Click on any article to focus and read its AI analysis
+          </div>
+        )}
       </div>
       
       {articles.length === 0 ? (
@@ -26,9 +36,26 @@ export function Spectrum({ articles }: { articles: Article[] }) {
           <div className="relative w-full h-full" id="spectrum-stage">
             <div className="w-full h-full relative">
               {articles.map((a, index) => (
-                <PositionedCard key={a.url || index} article={a} index={index} />
+                <PositionedCard 
+                  key={a.url || index} 
+                  article={a} 
+                  index={index}
+                  isSelected={selectedArticle === a.url}
+                  hasSelection={hasSelection}
+                  onSelect={() => setSelectedArticle(selectedArticle === a.url ? null : a.url)}
+                />
               ))}
             </div>
+            
+            {/* Clear selection button */}
+            {selectedArticle && (
+              <button
+                onClick={() => setSelectedArticle(null)}
+                className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-black/90 transition-colors z-10"
+              >
+                Clear Selection
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -36,7 +63,19 @@ export function Spectrum({ articles }: { articles: Article[] }) {
   )
 }
 
-function PositionedCard({ article, index }: { article: Article; index: number }) {
+function PositionedCard({ 
+  article, 
+  index, 
+  isSelected, 
+  hasSelection,
+  onSelect 
+}: { 
+  article: Article; 
+  index: number;
+  isSelected: boolean;
+  hasSelection: boolean;
+  onSelect: () => void;
+}) {
   // Convert spectrum score (-1 to 1) to percentage (0% to 100%)
   const leftPercent = ((article.spectrum_score + 1) / 2) * 100
   
@@ -63,13 +102,15 @@ function PositionedCard({ article, index }: { article: Article; index: number })
   const globalOffset = (index * 7) % 20 - 10  // -10 to +10 variation
   
   return (
-    <motion.a
-      href={article.url}
-      target="_blank"
-      rel="noreferrer"
+    <motion.div
       className="absolute"
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{ 
+        opacity: hasSelection ? (isSelected ? 1 : 0.3) : 1, 
+        y: 0,
+        scale: isSelected ? 1.05 : 1,
+        zIndex: isSelected ? 50 : 1
+      }}
       transition={{ type: 'spring', stiffness: 120, damping: 16, delay: index * 0.1 }}
       style={{ 
         left: `calc(${leftPercent}% - 140px + ${jitterX + globalOffset}px)`, 
@@ -78,8 +119,16 @@ function PositionedCard({ article, index }: { article: Article; index: number })
       }}
     >
       <div
-        className="w-[280px] bg-white/95 border rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
-        style={{ borderColor: 'rgba(0,0,0,0.08)' }}
+        onClick={(e) => {
+          e.preventDefault()
+          onSelect()
+        }}
+        className={`w-[280px] border rounded-lg shadow-sm p-4 transition-all cursor-pointer ${
+          isSelected 
+            ? 'bg-white border-blue-500 shadow-xl ring-4 ring-blue-200/50 min-h-[200px]' 
+            : 'bg-white/95 hover:shadow-md hover:bg-white border-gray-200'
+        }`}
+        style={{ borderColor: isSelected ? '#3b82f6' : 'rgba(0,0,0,0.08)' }}
       >
         <div className="text-xs text-gray-500 mb-2 flex justify-between">
           <span>{article.source}</span>
@@ -95,10 +144,23 @@ function PositionedCard({ article, index }: { article: Article; index: number })
         {article.reasoning && (
           <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border-l-2 border-blue-200">
             <div className="font-medium text-blue-700 mb-1">AI Analysis:</div>
-            <div className="line-clamp-2">{article.reasoning}</div>
+            <div className={isSelected ? '' : 'line-clamp-2'}>{article.reasoning}</div>
           </div>
         )}
+        
+        {/* Read article link - only show when selected */}
+        {isSelected && (
+          <a
+            href={article.url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 block text-center bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-xs font-medium transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            📖 Read Full Article
+          </a>
+        )}
       </div>
-    </motion.a>
+    </motion.div>
   )
 } 

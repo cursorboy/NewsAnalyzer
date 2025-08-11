@@ -235,4 +235,34 @@ def classify_by_outlet(url: str) -> Classification:
         confidence=0.3, 
         method="unknown",
         reasoning="Unknown source - no bias information available."
+    )
+
+
+async def classify_hybrid(title: str, snippet: str, source: str, ai_limit_reached: bool = False) -> Classification:
+    """
+    Hybrid classification: Use outlet-based for known sources, AI for unknown sources
+    This dramatically improves speed by avoiding unnecessary AI calls
+    """
+    domain = extract_domain(f"https://{source}") or ""
+    
+    # If it's a known outlet, use fast outlet-based classification
+    if domain in OUTLET_BIAS:
+        reasoning = f"Based on {domain}'s known editorial stance and historical reporting patterns."
+        return Classification(
+            score=OUTLET_BIAS[domain], 
+            confidence=0.9, 
+            method="outlet",
+            reasoning=reasoning
+        )
+    
+    # For unknown sources, use AI analysis (but respect limits)
+    if not ai_limit_reached and settings.openai_api_key:
+        return await classify_with_ai(title, snippet, source)
+    
+    # Fallback for unknown sources when AI limit reached
+    return Classification(
+        score=0.0, 
+        confidence=0.3, 
+        method="unknown",
+        reasoning="Unknown source - no bias information available."
     ) 

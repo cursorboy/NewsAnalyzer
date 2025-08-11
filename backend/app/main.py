@@ -4,7 +4,7 @@ from typing import List, Literal, Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 
 from .services.google import search_news, get_api_status
-from .services.classifier import classify_by_outlet, classify_with_ai
+from .services.classifier import classify_by_outlet, classify_with_ai, classify_hybrid
 from .config import settings
 
 app = FastAPI(title="Political Spectrum News Analyzer API", version="0.1.0")
@@ -175,18 +175,18 @@ MOCK_NARRATIVES: List[Narrative] = [
 ]
 
 
-@app.get("/health")
+@app.get("/api/health")
 async def health():
     return {"status": "ok"}
 
 
-@app.get("/api-status", response_model=APIStatusResponse)
+@app.get("/api/api-status", response_model=APIStatusResponse)
 async def api_status():
     """Get current Google API usage status and rate limit information"""
     return get_api_status()
 
 
-@app.get("/search", response_model=SearchResponse)
+@app.get("/api/search", response_model=SearchResponse)
 async def search(q: str = Query(..., min_length=2)):
     # Check if Google API is configured
     if not settings.google_api_key or not settings.google_cse_id:
@@ -215,17 +215,27 @@ async def search(q: str = Query(..., min_length=2)):
             }
         }
     
-    # Use real Google search when API keys are available - fetch more for better diversity
-    items = await search_news(q, num=20)
+    # Use real Google search when API keys are available - limit to 20 articles for better UX
+    items = await search_news(q, num=30)  # Get 30, filter to best 20
     articles: list[Article] = []
+    ai_calls_made = 0
+    max_ai_calls = 10  # Limit AI calls for speed
+    
     for it in items:
+        # Stop at 20 articles for better spectrum visualization
+        if len(articles) >= 20:
+            break
+            
         link = it.get("link") or it.get("formattedUrl")
         title = it.get("title") or ""
         snippet = it.get("snippet") or ""
         source = (it.get("displayLink") or "").lower()
         
-        # Use AI classification for better analysis with reasoning
-        cls = await classify_with_ai(title, snippet, source)
+        # Use hybrid classification: fast for known outlets, AI for unknown (with limits)
+        cls = await classify_hybrid(title, snippet, source, ai_calls_made >= max_ai_calls)
+        
+        if cls.method == "ai":
+            ai_calls_made += 1
         
         articles.append(
             Article(
@@ -240,6 +250,8 @@ async def search(q: str = Query(..., min_length=2)):
                 reasoning=cls.reasoning
             )
         )
+    
+    print(f"Search completed: {len(articles)} articles, {ai_calls_made} AI calls made")
     
     # Include API status in response for monitoring
     final_status = get_api_status()
@@ -256,19 +268,19 @@ async def search(q: str = Query(..., min_length=2)):
 
 
 # Prototype endpoints for the 72-hour deliverable
-@app.get("/articles", response_model=List[Article])
+@app.get("/api/articles", response_model=List[Article])
 async def list_articles() -> List[Article]:
     # Return mock data for now; could be replaced by live search
     return MOCK_ARTICLES
 
 
-@app.get("/articles/{article_id}", response_model=ArticleDetail)
+@app.get("/api/articles/{article_id}", response_model=ArticleDetail)
 async def get_article(article_id: str) -> ArticleDetail:
     if article_id not in MOCK_DETAILS:
         raise HTTPException(status_code=404, detail="Article not found")
     return MOCK_DETAILS[article_id]
 
 
-@app.get("/narratives", response_model=List[Narrative])
+@app.get("/api/narratives", response_model=List[Narrative])
 async def get_narratives() -> List[Narrative]:
     return MOCK_NARRATIVES

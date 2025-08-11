@@ -408,17 +408,29 @@ export default function Game() {
                 <p className="text-lg text-gray-700">
                   Drag this article to where you think it belongs on the political spectrum
                 </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  💡 Click the article to read it in a new tab
+                </p>
               </div>
 
               {/* Article Card */}
               <motion.div
-                className={`bg-white rounded-lg shadow-lg p-6 cursor-grab ${isDragging ? 'cursor-grabbing' : ''}`}
+                className={`bg-white rounded-lg shadow-lg p-6 cursor-grab ${isDragging ? 'cursor-grabbing' : ''} relative`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
                 <div className="text-sm text-gray-500 mb-2">{gameState.currentArticle.source}</div>
                 <h2 className="text-xl font-bold text-gray-900 mb-3">{gameState.currentArticle.title}</h2>
-                <p className="text-gray-700">{gameState.currentArticle.snippet}</p>
+                <p className="text-gray-700 mb-3">{gameState.currentArticle.snippet}</p>
+                
+                {/* Clickable link overlay */}
+                <button
+                  onClick={() => gameState.currentArticle?.url && window.open(gameState.currentArticle.url, '_blank')}
+                  className="absolute top-4 right-4 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium transition-colors"
+                  title="Read full article"
+                >
+                  📖 Read Article
+                </button>
               </motion.div>
 
               {/* Political Spectrum */}

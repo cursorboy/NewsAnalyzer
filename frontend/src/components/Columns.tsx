@@ -48,9 +48,23 @@ function Column({ title, border, items, colorClass }: { title: string; border: s
               rel="noreferrer"
               className="block rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-colors p-3"
             >
-              <div className="text-xs text-gray-500 mb-1">{a.source}</div>
+              <div className="text-xs text-gray-500 mb-1 flex justify-between items-center">
+                <span>{a.source}</span>
+                <span className="bg-gray-100 px-1 rounded text-xs">
+                  {a.spectrum_score > 0 ? '+' : ''}{a.spectrum_score.toFixed(2)}
+                </span>
+              </div>
               <div className="text-sm font-medium mb-2 leading-snug">{a.title}</div>
-              <div className="text-xs text-gray-600 line-clamp-3">{a.snippet}</div>
+              <div className="text-xs text-gray-600 line-clamp-3 mb-2">{a.snippet}</div>
+              <div className="text-xs text-gray-400 mb-2">
+                {a.method} • {Math.round(a.confidence * 100)}% confidence
+              </div>
+              {a.reasoning && (
+                <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border-l-2 border-blue-200">
+                  <div className="font-medium text-blue-700 mb-1">AI Analysis:</div>
+                  <div className="line-clamp-3">{a.reasoning}</div>
+                </div>
+              )}
             </a>
           </li>
         ))}

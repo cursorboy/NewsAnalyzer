@@ -1,49 +1,28 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react'
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react'
 import type { Article } from '../lib/api'
 
 interface ArticlesContextType {
-  cachedArticles: Article[]
-  cachedQuery: string
+  cachedArticles: { [query: string]: Article[] }
   cacheArticles: (query: string, articles: Article[]) => void
-  getCachedArticles: (query: string) => Article[] | null
-  clearCache: () => void
+  getCachedArticles: (query: string) => Article[] | undefined
 }
 
 const ArticlesContext = createContext<ArticlesContextType | undefined>(undefined)
 
 export function ArticlesProvider({ children }: { children: ReactNode }) {
-  const [cachedArticles, setCachedArticles] = useState<Article[]>([])
-  const [cachedQuery, setCachedQuery] = useState<string>('')
+  const [cachedArticles, setCachedArticles] = useState<{ [query: string]: Article[] }>({})
 
-  const cacheArticles = (query: string, articles: Article[]) => {
+  const cacheArticles = useCallback((query: string, articles: Article[]) => {
+    setCachedArticles(prev => ({ ...prev, [query]: articles }))
     console.log(`Caching ${articles.length} articles for query: "${query}"`)
-    setCachedQuery(query.toLowerCase().trim())
-    setCachedArticles(articles)
-  }
+  }, [])
 
-  const getCachedArticles = (query: string): Article[] | null => {
-    const normalizedQuery = query.toLowerCase().trim()
-    if (normalizedQuery === cachedQuery && cachedArticles.length > 0) {
-      console.log(`Using cached ${cachedArticles.length} articles for query: "${query}"`)
-      return cachedArticles
-    }
-    return null
-  }
-
-  const clearCache = () => {
-    console.log('Clearing article cache')
-    setCachedArticles([])
-    setCachedQuery('')
-  }
+  const getCachedArticles = useCallback((query: string) => {
+    return cachedArticles[query]
+  }, [cachedArticles])
 
   return (
-    <ArticlesContext.Provider value={{
-      cachedArticles,
-      cachedQuery,
-      cacheArticles,
-      getCachedArticles,
-      clearCache
-    }}>
+    <ArticlesContext.Provider value={{ cachedArticles, cacheArticles, getCachedArticles }}>
       {children}
     </ArticlesContext.Provider>
   )

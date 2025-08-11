@@ -154,14 +154,27 @@ function Landing() {
 function Results() {
   const [params] = useSearchParams()
   const query = params.get('q') ?? ''
-  const { cacheArticles } = useArticles()
-  const { data, isLoading, isError } = useSearch(query)
+  const { cacheArticles, getCachedArticles } = useArticles()
   const [view, setView] = useState<'spectrum' | 'columns'>('spectrum')
   
-  // Cache articles when data is loaded
-  if (data && data.articles) {
+  // Check if we have cached articles first
+  const cachedArticles = getCachedArticles(query)
+  const shouldUseCached = cachedArticles && cachedArticles.length > 0
+  
+  // Only use the API hook if we don't have cached articles
+  const { data, isLoading, isError } = useSearch(query)
+  
+  // Determine which articles to use
+  const articles = shouldUseCached ? cachedArticles : (data?.articles || [])
+  const loading = shouldUseCached ? false : isLoading
+  const error = shouldUseCached ? false : isError
+  
+  // Cache articles when data is loaded from API
+  if (!shouldUseCached && data && data.articles) {
     cacheArticles(query, data.articles)
   }
+  
+  console.log(`Results: Using ${shouldUseCached ? 'cached' : 'fresh'} articles (${articles.length} total)`)
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-gray-200">
@@ -179,11 +192,11 @@ function Results() {
         </div>
       </header>
       <main className="flex-1">
-        {isLoading && <LoadingSpectrum />}
-        {!isLoading && !isError && data && (
-          view === 'spectrum' ? <Spectrum articles={data.articles} /> : <Columns articles={data.articles} />
+        {loading && <LoadingSpectrum />}
+        {!loading && !error && articles.length > 0 && (
+          view === 'spectrum' ? <Spectrum articles={articles} /> : <Columns articles={articles} />
         )}
-        {isError && (
+        {error && (
           <div className="p-4 text-center text-red-600">Failed to load results.</div>
         )}
       </main>
