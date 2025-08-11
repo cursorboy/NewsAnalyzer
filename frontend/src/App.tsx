@@ -2,13 +2,20 @@ import { BrowserRouter, Routes, Route, useNavigate, useSearchParams } from 'reac
 import { useState } from 'react'
 import './index.css'
 import { useSearch } from './hooks/useSearch'
+import { searchArticles } from './lib/api'
 import { Spectrum } from './components/Spectrum'
 import { LoadingSpectrum } from './components/LoadingSpectrum'
 import Columns from './components/Columns'
 import Game from './components/Game'
+import APIStatusDashboard from './components/APIStatus'
+import Articles from './components/Articles'
+import ArticleDetail from './components/ArticleDetail'
+import Narratives from './components/Narratives'
+import { ArticlesProvider, useArticles } from './context/ArticlesContext'
 
 function Landing() {
   const navigate = useNavigate()
+  const { cacheArticles } = useArticles()
   const [q, setQ] = useState('')
   const [searchResults, setSearchResults] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -19,12 +26,29 @@ function Landing() {
     
     setIsLoading(true)
     try {
-      // Use the search API directly
-      const response = await fetch(`http://localhost:8000/search?q=${encodeURIComponent(q.trim())}`)
-      const data = await response.json()
+      const data = await searchArticles(q.trim())
       setSearchResults(data)
+      
+      // Cache the articles for potential game use
+      cacheArticles(q.trim(), data.articles)
+      
+      // Log API status for debugging
+      if (data.api_status) {
+        console.log('API Status:', data.api_status)
+        if (data.api_status.error) {
+          console.warn('API Issue:', data.api_status.message)
+        }
+      }
     } catch (error) {
       console.error('Search failed:', error)
+      setSearchResults({
+        query: q.trim(),
+        articles: [],
+        api_status: {
+          error: 'network_error',
+          message: 'Unable to connect to the search service. Please check if the backend is running.'
+        }
+      })
     } finally {
       setIsLoading(false)
     }
@@ -61,9 +85,40 @@ function Landing() {
         
         {searchResults && (
           <div className="mt-12 bg-white rounded-lg shadow-lg p-8 text-center">
+            {/* API Status Warning */}
+            {searchResults.api_status?.error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center justify-center text-red-800">
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-semibold">
+                    {searchResults.api_status.error === 'rate_limited' ? 'Rate Limited' :
+                     searchResults.api_status.error === 'quota_exceeded' ? 'API Quota Exceeded' :
+                     searchResults.api_status.error === 'network_error' ? 'Connection Error' :
+                     'API Error'}
+                  </span>
+                </div>
+                <p className="text-red-700 text-sm mt-2">{searchResults.api_status.message}</p>
+                {searchResults.api_status.error === 'quota_exceeded' && (
+                  <p className="text-red-600 text-xs mt-2">
+                    Google Custom Search API daily quota reached. Please try again tomorrow or upgrade your API plan.
+                  </p>
+                )}
+              </div>
+            )}
+            
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
               Found {searchResults.articles.length} articles about "{searchResults.query}"
             </h2>
+            
+            {/* API Status Info for successful requests */}
+            {searchResults.api_status && !searchResults.api_status.error && searchResults.api_status.requests_made && (
+              <div className="mb-4 text-xs text-gray-500">
+                API Status: {searchResults.api_status.requests_made} requests made • {searchResults.api_status.success_rate}% success rate
+              </div>
+            )}
+            
             <p className="text-gray-600 mb-8">How would you like to explore this coverage?</p>
             
             <div className="grid md:grid-cols-2 gap-6">
@@ -99,8 +154,14 @@ function Landing() {
 function Results() {
   const [params] = useSearchParams()
   const query = params.get('q') ?? ''
+  const { cacheArticles } = useArticles()
   const { data, isLoading, isError } = useSearch(query)
   const [view, setView] = useState<'spectrum' | 'columns'>('spectrum')
+  
+  // Cache articles when data is loaded
+  if (data && data.articles) {
+    cacheArticles(query, data.articles)
+  }
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-gray-200">
@@ -110,6 +171,7 @@ function Results() {
             <input name="q" defaultValue={query} className="w-full rounded-full border border-gray-300 px-5 py-2" />
           </form>
           <a href={`/game?q=${encodeURIComponent(query)}`} className="px-3 py-1 rounded bg-purple-600 text-white text-sm font-medium hover:bg-purple-700">Play Game</a>
+          <a href="/api-status" className="px-3 py-1 rounded bg-gray-600 text-white text-sm font-medium hover:bg-gray-700">API Status</a>
           <div className="flex gap-2">
             <button onClick={() => setView('spectrum')} className={`px-3 py-1 rounded border text-sm ${view==='spectrum' ? 'bg-gray-800 text-white' : 'bg-white text-gray-700'}`}>Spectrum</button>
             <button onClick={() => setView('columns')} className={`px-3 py-1 rounded border text-sm ${view==='columns' ? 'bg-gray-800 text-white' : 'bg-white text-gray-700'}`}>Columns</button>
@@ -131,12 +193,18 @@ function Results() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/search" element={<Results />} />
-        <Route path="/game" element={<Game />} />
-      </Routes>
-    </BrowserRouter>
+    <ArticlesProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/search" element={<Results />} />
+          <Route path="/game" element={<Game />} />
+          <Route path="/api-status" element={<APIStatusDashboard />} />
+          <Route path="/articles" element={<Articles />} />
+          <Route path="/articles/:id" element={<ArticleDetail />} />
+          <Route path="/narratives" element={<Narratives />} />
+        </Routes>
+      </BrowserRouter>
+    </ArticlesProvider>
   )
 }

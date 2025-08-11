@@ -15,5 +15,8 @@ class Settings(BaseSettings):
     database_url: str | None = None
     redis_url: str | None = None
 
+    # Frontend origin for CORS (e.g., https://your-project.vercel.app)
+    frontend_origin: str | None = None
+
 
 settings = Settings()  # type: ignore 

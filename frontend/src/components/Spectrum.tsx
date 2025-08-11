@@ -92,6 +92,12 @@ function PositionedCard({ article, index }: { article: Article; index: number })
         <div className="mt-2 text-xs text-gray-400">
           {article.method} • {Math.round(article.confidence * 100)}% confidence
         </div>
+        {article.reasoning && (
+          <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border-l-2 border-blue-200">
+            <div className="font-medium text-blue-700 mb-1">AI Analysis:</div>
+            <div className="line-clamp-2">{article.reasoning}</div>
+          </div>
+        )}
       </div>
     </motion.a>
   )

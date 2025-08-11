@@ -1,10 +1,41 @@
 from __future__ import annotations
 
 import httpx
-from typing import Any
+import logging
+from typing import Any, Dict, Optional
+from datetime import datetime
 from ..config import settings
 
 BASE_URL = "https://www.googleapis.com/customsearch/v1"
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# API Status tracking
+class APIStatus:
+    def __init__(self):
+        self.total_requests = 0
+        self.failed_requests = 0
+        self.rate_limited = False
+        self.last_error = None
+        self.last_request_time = None
+        self.quota_exceeded = False
+        
+    def record_request(self):
+        self.total_requests += 1
+        self.last_request_time = datetime.now()
+        
+    def record_error(self, error_type: str, message: str):
+        self.failed_requests += 1
+        self.last_error = {"type": error_type, "message": message, "time": datetime.now()}
+        
+        if "quota" in message.lower() or "limit" in message.lower():
+            self.quota_exceeded = True
+            self.rate_limited = True
+        elif error_type == "rate_limit":
+            self.rate_limited = True
+
+api_status = APIStatus()
 
 # Major outlets to target for balanced coverage
 TARGET_OUTLETS = [
@@ -84,7 +115,7 @@ async def search_news(query: str, num: int = 10) -> list[dict[str, Any]]:
 
 
 async def _search_with_params(query: str, num: int = 10) -> list[dict[str, Any]]:
-    """Helper function to perform actual Google search"""
+    """Helper function to perform actual Google search with comprehensive error handling"""
     params = {
         "q": query,
         "cx": settings.google_cse_id,
@@ -95,12 +126,79 @@ async def _search_with_params(query: str, num: int = 10) -> list[dict[str, Any]]
         "sort": "date",  # Get recent articles
     }
     
+    api_status.record_request()
+    
     try:
         async with httpx.AsyncClient(timeout=20) as client:
             r = await client.get(BASE_URL, params=params)
+            
+            # Handle different HTTP status codes
+            if r.status_code == 429:
+                api_status.record_error("rate_limit", "Too many requests - rate limited")
+                logger.warning("Google API rate limit exceeded")
+                return []
+            elif r.status_code == 403:
+                error_data = r.json() if r.content else {}
+                error_message = error_data.get("error", {}).get("message", "Forbidden")
+                
+                if "quota" in error_message.lower() or "limit" in error_message.lower():
+                    api_status.record_error("quota_exceeded", f"API quota exceeded: {error_message}")
+                    logger.error(f"Google API quota exceeded: {error_message}")
+                else:
+                    api_status.record_error("forbidden", f"API access forbidden: {error_message}")
+                    logger.error(f"Google API forbidden: {error_message}")
+                return []
+            elif r.status_code == 400:
+                error_data = r.json() if r.content else {}
+                error_message = error_data.get("error", {}).get("message", "Bad request")
+                api_status.record_error("bad_request", f"Invalid API request: {error_message}")
+                logger.error(f"Google API bad request: {error_message}")
+                return []
+            
             r.raise_for_status()
             data = r.json()
-            return data.get("items", [])
+            
+            # Check for API errors in response
+            if "error" in data:
+                error_info = data["error"]
+                error_message = error_info.get("message", "Unknown API error")
+                error_code = error_info.get("code", "unknown")
+                
+                if error_code == 403 or "quota" in error_message.lower():
+                    api_status.record_error("quota_exceeded", f"API quota exceeded: {error_message}")
+                    logger.error(f"Google API quota exceeded: {error_message}")
+                else:
+                    api_status.record_error("api_error", f"API error {error_code}: {error_message}")
+                    logger.error(f"Google API error: {error_message}")
+                return []
+            
+            items = data.get("items", [])
+            logger.info(f"Successfully fetched {len(items)} results for query: {query[:50]}...")
+            return items
+            
+    except httpx.TimeoutException:
+        api_status.record_error("timeout", "Request timed out")
+        logger.warning("Google API request timed out")
+        return []
+    except httpx.HTTPStatusError as e:
+        api_status.record_error("http_error", f"HTTP {e.response.status_code}: {str(e)}")
+        logger.error(f"Google API HTTP error: {e}")
+        return []
     except Exception as e:
-        print(f"Google API Error: {e}")
-        return [] 
+        api_status.record_error("unknown", str(e))
+        logger.error(f"Unexpected Google API error: {e}")
+        return []
+
+
+def get_api_status() -> Dict[str, Any]:
+    """Get current API status and usage information"""
+    return {
+        "total_requests": api_status.total_requests,
+        "failed_requests": api_status.failed_requests,
+        "success_rate": (api_status.total_requests - api_status.failed_requests) / max(api_status.total_requests, 1) * 100,
+        "rate_limited": api_status.rate_limited,
+        "quota_exceeded": api_status.quota_exceeded,
+        "last_error": api_status.last_error,
+        "last_request_time": api_status.last_request_time.isoformat() if api_status.last_request_time else None,
+        "api_configured": bool(settings.google_api_key and settings.google_cse_id)
+    } 

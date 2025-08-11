@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import type { Article } from '../lib/api'
 import { searchArticles } from '../lib/api'
+import { useArticles } from '../context/ArticlesContext'
 
 interface GameState {
   score: number
@@ -19,6 +20,7 @@ interface GameState {
 export default function Game() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { getCachedArticles, cacheArticles } = useArticles()
   const searchQuery = searchParams.get('q') || ''
   
   const [gameState, setGameState] = useState<GameState>({
@@ -45,46 +47,71 @@ export default function Game() {
     'trade policy', 'social security', 'minimum wage'
   ]
 
-  // Fetch articles for the game
-  const fetchGameArticles = async () => {
-    try {
-      // Use search query if provided, otherwise use random topic
-      const topic = searchQuery || gameTopics[Math.floor(Math.random() * gameTopics.length)]
-      const data = await searchArticles(topic)
-      
-      // Filter articles with known bias scores for accurate scoring
-      const knownBiasArticles = data.articles.filter(article => 
-        article.method === 'outlet' && article.confidence > 0.6
-      )
-      
-      // Ensure diversity across the spectrum for better gameplay
-      const leftArticles = knownBiasArticles.filter(a => a.spectrum_score <= -0.4)
-      const centerArticles = knownBiasArticles.filter(a => a.spectrum_score > -0.4 && a.spectrum_score < 0.4)
-      const rightArticles = knownBiasArticles.filter(a => a.spectrum_score >= 0.4)
+  // Process articles for game use (filtering and organizing)
+  const processArticlesForGame = (articles: Article[]) => {
+    // Filter articles with known bias scores for accurate scoring
+    const knownBiasArticles = articles.filter(article => 
+      (article.method === 'outlet' || article.method === 'ai') && article.confidence > 0.5
+    )
+    
+    console.log(`Found ${knownBiasArticles.length} articles with good confidence scores`)
+    
+    // If we have enough articles, try to get diversity across the spectrum
+    if (knownBiasArticles.length >= 8) {
+      const leftArticles = knownBiasArticles.filter(a => a.spectrum_score <= -0.3)
+      const centerArticles = knownBiasArticles.filter(a => a.spectrum_score > -0.3 && a.spectrum_score < 0.3)
+      const rightArticles = knownBiasArticles.filter(a => a.spectrum_score >= 0.3)
       
       // Mix articles from different parts of spectrum
       const mixedArticles = [
-        ...leftArticles.slice(0, 4),
-        ...centerArticles.slice(0, 3), 
-        ...rightArticles.slice(0, 4)
+        ...leftArticles.slice(0, 3),
+        ...centerArticles.slice(0, 4), 
+        ...rightArticles.slice(0, 3)
       ]
       
       // Shuffle for random order in game
       const shuffled = mixedArticles.sort(() => Math.random() - 0.5)
       
       if (shuffled.length >= 5) {  // Need at least 5 articles for a good game
+        console.log(`Using ${shuffled.length} diverse articles for game`)
         setArticles(shuffled)
         return shuffled
       }
+    }
+    
+    // Fallback: use any articles we have with good confidence
+    if (knownBiasArticles.length >= 3) {
+      const shuffledAll = knownBiasArticles.sort(() => Math.random() - 0.5).slice(0, 10)
+      console.log(`Using ${shuffledAll.length} articles (fallback mode)`)
+      setArticles(shuffledAll)
+      return shuffledAll
+    }
+    
+    return []
+  }
+
+  // Fetch articles for the game
+  const fetchGameArticles = async () => {
+    try {
+      // Use search query if provided, otherwise use random topic
+      const topic = searchQuery || gameTopics[Math.floor(Math.random() * gameTopics.length)]
       
-      // Fallback to all known bias articles if we don't have enough diversity
-      if (knownBiasArticles.length > 0) {
-        const shuffledAll = knownBiasArticles.sort(() => Math.random() - 0.5)
-        setArticles(shuffledAll)
-        return shuffledAll
+      // Check cache first if we have a specific search query
+      if (searchQuery) {
+        const cachedArticles = getCachedArticles(searchQuery)
+        if (cachedArticles) {
+          console.log(`Using ${cachedArticles.length} cached articles for "${searchQuery}" - no API call needed!`)
+          return processArticlesForGame(cachedArticles)
+        }
       }
       
-      return []
+      console.log(`No cached articles found for "${topic}", making API call...`)
+      const data = await searchArticles(topic)
+      
+      // Cache the new results
+      cacheArticles(topic, data.articles)
+      
+      return processArticlesForGame(data.articles)
     } catch (error) {
       console.error('Failed to fetch articles:', error)
       return []
@@ -92,23 +119,34 @@ export default function Game() {
   }
 
   const startGame = async () => {
-    const gameArticles = await fetchGameArticles()
-    if (gameArticles.length === 0) {
-      alert('Unable to load articles. Please try again.')
-      return
+    console.log('Starting game...')
+    try {
+      const gameArticles = await fetchGameArticles()
+      console.log('Fetched articles:', gameArticles.length)
+      
+      if (gameArticles.length === 0) {
+        console.log('No articles found, showing alert')
+        alert('Unable to load articles. Please try again.')
+        return
+      }
+      
+      console.log('Setting game state to playing with first article:', gameArticles[0])
+      setGameState(prev => ({
+        ...prev,
+        score: 0,
+        streak: 0,
+        round: 1,
+        gamePhase: 'playing',
+        currentArticle: gameArticles[0],
+        userGuess: null,
+        roundScore: 0
+      }))
+      setDragPosition(0)
+      console.log('Game state updated successfully')
+    } catch (error) {
+      console.error('Error starting game:', error)
+      alert('Error starting game. Please try again.')
     }
-    
-    setGameState(prev => ({
-      ...prev,
-      score: 0,
-      streak: 0,
-      round: 1,
-      gamePhase: 'playing',
-      currentArticle: gameArticles[0],
-      userGuess: null,
-      roundScore: 0
-    }))
-    setDragPosition(0)
   }
 
   const calculateScore = (userGuess: number, actualBias: number): number => {
@@ -480,6 +518,13 @@ export default function Game() {
                   <div className="text-lg">
                     Accuracy: <span className="font-bold text-green-600">{gameState.accuracy}%</span>
                   </div>
+                  
+                  {gameState.currentArticle.reasoning && (
+                    <div className="mt-6 bg-blue-50 border-l-4 border-blue-200 p-4 text-left">
+                      <div className="font-semibold text-blue-800 mb-2">AI Analysis:</div>
+                      <div className="text-sm text-blue-700">{gameState.currentArticle.reasoning}</div>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -129,6 +129,41 @@ Returns articles positioned on political spectrum.
 }
 ```
 
+### Prototype Endpoints
+
+- `GET /articles` — list recent articles with bias scores (mock)
+- `GET /articles/{id}` — detailed breakdown with highlighted phrases (mock)
+- `GET /narratives` — clustered story framings (mock)
+
+## Deployment
+
+### Backend (FastAPI)
+
+Deploy to Render/Railway/Fly.io.
+
+Env vars:
+
+- `GOOGLE_API_KEY` (optional)
+- `GOOGLE_CSE_ID` (optional)
+- `ENVIRONMENT=production`
+- `FRONTEND_ORIGIN=https://<your-vercel-domain>`
+
+Start command:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+### Frontend (Vercel)
+
+Project Settings → Environment Variables:
+
+- `VITE_API_BASE=https://<your-backend-host>`
+
+Build Command: `npm run build`
+
+Output Directory: `dist`
+
 ## Roadmap
 
 - [ ] AI-powered classification for unknown outlets
