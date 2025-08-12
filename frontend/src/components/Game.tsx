@@ -20,7 +20,7 @@ interface GameState {
 export default function Game() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { getCachedArticles, cacheArticles } = useArticles()
+  const { getCachedArticles, cacheArticles, cachedArticles } = useArticles()
   const searchQuery = searchParams.get('q') || ''
   
   const [gameState, setGameState] = useState<GameState>({
@@ -93,19 +93,35 @@ export default function Game() {
   // Fetch articles for the game
   const fetchGameArticles = async () => {
     try {
-      // Use search query if provided, otherwise use random topic
-      const topic = searchQuery || gameTopics[Math.floor(Math.random() * gameTopics.length)]
-      
-      // Check cache first if we have a specific search query
+      // If we have a search query, use it
       if (searchQuery) {
         const cachedArticles = getCachedArticles(searchQuery)
         if (cachedArticles) {
           console.log(`Using ${cachedArticles.length} cached articles for "${searchQuery}" - no API call needed!`)
           return processArticlesForGame(cachedArticles)
         }
+        
+        console.log(`No cached articles found for "${searchQuery}", making API call...`)
+        const data = await searchArticles(searchQuery)
+        cacheArticles(searchQuery, data.articles)
+        return processArticlesForGame(data.articles)
       }
       
-      console.log(`No cached articles found for "${topic}", making API call...`)
+      // No search query - check if we have ANY cached articles first
+      const allCachedTopics = Object.keys(cachedArticles)
+      if (allCachedTopics.length > 0) {
+        // Use the most recently cached topic
+        const recentTopic = allCachedTopics[allCachedTopics.length - 1]
+        const recentCachedArticles = getCachedArticles(recentTopic)
+        if (recentCachedArticles && recentCachedArticles.length > 0) {
+          console.log(`Using ${recentCachedArticles.length} cached articles for "${recentTopic}" - no API call needed!`)
+          return processArticlesForGame(recentCachedArticles)
+        }
+      }
+      
+      // No cached articles - pick a random topic and fetch
+      const topic = gameTopics[Math.floor(Math.random() * gameTopics.length)]
+      console.log(`No cached articles found, making API call for "${topic}"...`)
       const data = await searchArticles(topic)
       
       // Cache the new results
