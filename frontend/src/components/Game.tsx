@@ -130,6 +130,10 @@ export default function Game() {
         return
       }
       
+      // Set articles state for use in nextRound
+      setArticles(gameArticles)
+      console.log('Articles cached for game:', gameArticles.length)
+      
       console.log('Setting game state to playing with first article:', gameArticles[0])
       setGameState(prev => ({
         ...prev,
@@ -194,7 +198,17 @@ export default function Game() {
       return
     }
 
+    console.log(`Next round: ${gameState.round + 1}, Available articles: ${articles.length}`)
+    
+    if (articles.length === 0) {
+      console.error('No articles available for next round!')
+      alert('No more articles available. Please restart the game.')
+      return
+    }
+
     const nextArticle = articles[gameState.round] || articles[Math.floor(Math.random() * articles.length)]
+    console.log('Next article:', nextArticle?.title)
+    
     setGameState(prev => ({
       ...prev,
       round: prev.round + 1,

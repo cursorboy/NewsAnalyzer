@@ -130,6 +130,21 @@ function PositionedCard({
         }`}
         style={{ borderColor: isSelected ? '#3b82f6' : 'rgba(0,0,0,0.08)' }}
       >
+        {/* Read article link - at the top when selected */}
+        {isSelected && (
+          <div className="mb-3">
+            <a
+              href={article.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              📖 Read Article
+            </a>
+          </div>
+        )}
+        
         <div className="text-xs text-gray-500 mb-2 flex justify-between">
           <span>{article.source}</span>
           <span className="text-xs bg-gray-100 px-1 rounded">
@@ -144,21 +159,12 @@ function PositionedCard({
         {article.reasoning && (
           <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border-l-2 border-blue-200">
             <div className="font-medium text-blue-700 mb-1">AI Analysis:</div>
-            <div className={isSelected ? '' : 'line-clamp-2'}>{article.reasoning}</div>
+            <div className={isSelected ? 'line-clamp-4' : 'line-clamp-2'}>
+              {/* Limit to first paragraph or 200 characters */}
+              {article.reasoning.split('\n')[0].substring(0, 200)}
+              {article.reasoning.length > 200 ? '...' : ''}
+            </div>
           </div>
-        )}
-        
-        {/* Read article link - only show when selected */}
-        {isSelected && (
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 block text-center bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-xs font-medium transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
-            📖 Read Full Article
-          </a>
         )}
       </div>
     </motion.div>
