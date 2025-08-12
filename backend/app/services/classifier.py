@@ -172,7 +172,7 @@ Respond in this exact JSON format:
 }}
 """
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:  # 15 second timeout
             response = await client.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={
@@ -192,7 +192,7 @@ Respond in this exact JSON format:
                         }
                     ],
                     "temperature": 0.3,  # Lower temperature for more consistent analysis
-                    "max_tokens": 500
+                    "max_tokens": 200  # Reduced tokens for faster response
                 }
             )
             

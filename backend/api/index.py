@@ -122,11 +122,14 @@ class handler(BaseHTTPRequestHandler):
             if settings.openai_api_key:
                 print(f"Debug: OpenAI API key starts with: {settings.openai_api_key[:10]}...")
             
-            # Get search results from Google
-            search_results = await search_news(query, num=20)
+            # Get search results from Google (reduced from 20 to 12 for faster response)
+            search_results = await search_news(query, num=12)
             print(f"Debug: Got {len(search_results)} search results")
             
-            articles = []
+            # Prepare all classification tasks
+            classification_tasks = []
+            article_data = []
+            
             for i, result in enumerate(search_results):
                 # Extract article info
                 url = result.get('link', '')
@@ -134,20 +137,46 @@ class handler(BaseHTTPRequestHandler):
                 snippet = result.get('snippet', '')
                 source = extract_domain(url) or 'unknown'
                 
-                print(f"Debug: Classifying article {i}: {title[:50]}... from {source}")
-                
-                # Classify the article using AI analysis
-                classification = await classify_with_ai(title, snippet, source)
-                
-                print(f"Debug: Classification result - method: {classification.method}, score: {classification.score}, confidence: {classification.confidence}")
-                
-                article = {
+                # Store article data for later
+                article_data.append({
                     "id": f"article_{i}",
                     "url": url,
                     "title": title,
                     "snippet": snippet,
                     "source": source,
-                    "published_at": result.get('published_at'),
+                    "published_at": result.get('published_at')
+                })
+                
+                # Create classification task
+                classification_tasks.append(classify_with_ai(title, snippet, source))
+            
+            print(f"Debug: Starting parallel classification of {len(classification_tasks)} articles")
+            
+            # Limit concurrent AI requests to avoid overwhelming the API (max 5 at once)
+            semaphore = asyncio.Semaphore(5)
+            
+            async def classify_with_limit(task):
+                async with semaphore:
+                    return await task
+            
+            # Run classifications with concurrency limit
+            limited_tasks = [classify_with_limit(task) for task in classification_tasks]
+            classifications = await asyncio.gather(*limited_tasks, return_exceptions=True)
+            
+            # Build final articles list
+            articles = []
+            for i, (article_info, classification) in enumerate(zip(article_data, classifications)):
+                # Handle any classification errors
+                if isinstance(classification, Exception):
+                    print(f"Debug: Classification failed for article {i}: {classification}")
+                    # Use fallback outlet-based classification
+                    from app.services.classifier import classify_by_outlet
+                    classification = classify_by_outlet(article_info["source"])
+                
+                print(f"Debug: Article {i} classified - method: {classification.method}, score: {classification.score}, confidence: {classification.confidence}")
+                
+                article = {
+                    **article_info,
                     "spectrum_score": classification.score,
                     "confidence": classification.confidence,
                     "method": classification.method,

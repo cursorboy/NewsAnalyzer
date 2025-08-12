@@ -54,37 +54,25 @@ async def search_news(query: str, num: int = 10) -> list[dict[str, Any]]:
     
     all_results = []
     
-    # More comprehensive outlet searches for better diversity
+    # Simplified search strategy - fewer API calls for faster response
     outlet_groups = [
-        # Liberal outlets - more variety
-        f"{query} site:cnn.com OR site:msnbc.com OR site:huffpost.com OR site:salon.com OR site:vox.com OR site:thedailybeast.com",
-        # Center outlets - high quality sources
-        f"{query} site:reuters.com OR site:apnews.com OR site:bbc.com OR site:axios.com OR site:politico.com OR site:npr.org",
-        # Conservative outlets - beyond just Fox
-        f"{query} site:wsj.com OR site:nypost.com OR site:dailywire.com OR site:nationalreview.com OR site:washingtonexaminer.com",
-        # Fox News separate to limit dominance
-        f"{query} site:foxnews.com",
-        # Additional conservative sources
-        f"{query} site:breitbart.com OR site:townhall.com OR site:redstate.com OR site:thepostmillennial.com",
-        # Additional liberal sources  
-        f"{query} site:motherjones.com OR site:thenation.com OR site:rawstory.com OR site:theintercept.com",
-        # Quality mainstream sources
-        f"{query} site:nytimes.com OR site:washingtonpost.com OR site:usatoday.com OR site:time.com",
-        # Network news
-        f"{query} site:abcnews.go.com OR site:cbsnews.com OR site:nbcnews.com",
-        # Business/quality sources
-        f"{query} site:bloomberg.com OR site:economist.com OR site:forbes.com OR site:marketwatch.com"
+        # Liberal sources
+        f"{query} site:cnn.com OR site:msnbc.com OR site:huffpost.com OR site:vox.com",
+        # Center sources  
+        f"{query} site:reuters.com OR site:apnews.com OR site:bbc.com OR site:axios.com OR site:npr.org",
+        # Conservative sources
+        f"{query} site:foxnews.com OR site:wsj.com OR site:nypost.com OR site:dailywire.com",
+        # Quality mainstream
+        f"{query} site:nytimes.com OR site:washingtonpost.com OR site:politico.com"
     ]
     
-    # Search each group with more results per group
-    for i, outlet_query in enumerate(outlet_groups):
-        # Limit Fox News results to prevent dominance (index 3 is Fox News)
-        num_results = 2 if i == 3 else 4
-        outlet_results = await _search_with_params(outlet_query, num=num_results)
+    # Search each group - reduced from 9 to 4 API calls
+    for outlet_query in outlet_groups:
+        outlet_results = await _search_with_params(outlet_query, num=3)
         all_results.extend(outlet_results)
     
-    # Also do a general search for additional coverage
-    general_results = await _search_with_params(query, num=8)
+    # One general search for additional coverage
+    general_results = await _search_with_params(query, num=6)
     all_results.extend(general_results)
     
     # Remove duplicates based on URL and title similarity
