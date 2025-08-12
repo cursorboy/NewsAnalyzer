@@ -9,10 +9,21 @@ from .config import settings
 
 app = FastAPI(title="Political Spectrum News Analyzer API", version="0.1.0")
 
-# CORS for local dev
-allowed_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
-if settings.environment != "development" and settings.frontend_origin:
-    allowed_origins.append(settings.frontend_origin)
+# CORS configuration
+allowed_origins = [
+    "http://localhost:5173", 
+    "http://127.0.0.1:5173"
+]
+
+# Add production frontend origins
+if settings.environment != "development":
+    if settings.frontend_origin:
+        allowed_origins.append(settings.frontend_origin)
+    # Add common Vercel patterns - update these with your actual domains
+    allowed_origins.extend([
+        "https://*.vercel.app",
+        "https://your-frontend-project.vercel.app"  # Replace with your actual frontend domain
+    ])
 
 app.add_middleware(
     CORSMiddleware,

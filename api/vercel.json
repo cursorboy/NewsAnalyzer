@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "index.py": {
+      "runtime": "python3.9"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.py"
+    }
+  ]
+}
