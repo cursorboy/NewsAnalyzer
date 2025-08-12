@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/index.py": {
-      "runtime": "@vercel/python"
-    },
-    "api/test.py": {
-      "runtime": "@vercel/python"
-    }
-  },
   "rewrites": [
     {
       "source": "/test",
