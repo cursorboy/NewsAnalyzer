@@ -63,7 +63,7 @@ function Landing() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 via-white to-red-50/40">
       <div className="mx-auto max-w-4xl px-6 pt-28 pb-16 text-center">
         <span className="inline-flex items-center rounded-full border bg-white/70 backdrop-blur px-3 py-1 text-xs font-medium text-gray-700">Political Spectrum News Analyzer</span>
         <h1 className="mt-6 text-4xl md:text-6xl font-extrabold tracking-tight text-gray-900 text-center">TheBiasGraph</h1>
