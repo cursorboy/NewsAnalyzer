@@ -1,6 +1,15 @@
 import json
+import asyncio
+import os
+import sys
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
+
+# Add the parent directory to sys.path to import from app
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from app.services.google import search_news, get_api_status
+from app.services.classifier import classify_hybrid, extract_domain
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -55,16 +64,7 @@ class handler(BaseHTTPRequestHandler):
                 response_body = {"status": "ok"}
                 
             elif path == '/api-status':
-                response_body = {
-                    "total_requests": 0,
-                    "failed_requests": 0,
-                    "success_rate": 100.0,
-                    "rate_limited": False,
-                    "quota_exceeded": False,
-                    "last_error": None,
-                    "last_request_time": None,
-                    "api_configured": False
-                }
+                response_body = get_api_status()
                 
             elif path == '/search':
                 # Get query parameter
@@ -77,102 +77,19 @@ class handler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"error": "Query parameter 'q' must be at least 2 characters"}).encode())
                     return
                 
-                # Mock articles
-                mock_articles = [
-                    {
-                        "id": "a1",
-                        "url": "https://www.reuters.com/world/us/example-article-1",
-                        "title": "Bipartisan group advances student loan policy compromise",
-                        "snippet": "Lawmakers from both parties introduced a compromise framework...",
-                        "source": "reuters.com",
-                        "published_at": None,
-                        "spectrum_score": 0.0,
-                        "confidence": 0.8,
-                        "method": "outlet",
-                        "reasoning": "Reuters maintains neutral reporting with balanced language."
-                    },
-                    {
-                        "id": "a2",
-                        "url": "https://www.foxnews.com/politics/example-article-2",
-                        "title": "Critics say loan forgiveness unfair to taxpayers",
-                        "snippet": "Opponents argue the plan shifts costs to working families...",
-                        "source": "foxnews.com",
-                        "published_at": None,
-                        "spectrum_score": 0.6,
-                        "confidence": 0.85,
-                        "method": "outlet",
-                        "reasoning": "Fox News typically leans conservative."
-                    },
-                    {
-                        "id": "a3",
-                        "url": "https://www.nytimes.com/2024/01/01/us/politics/example-article-3.html",
-                        "title": "Supporters say relief targets borrowers most in need",
-                        "snippet": "Advocates contend the program reduces default risk and boosts mobility...",
-                        "source": "nytimes.com",
-                        "published_at": None,
-                        "spectrum_score": -0.5,
-                        "confidence": 0.82,
-                        "method": "outlet",
-                        "reasoning": "The New York Times generally has a center-left editorial stance."
-                    }
-                ]
-                
-                # Filter articles based on query
-                filtered_articles = [
-                    article for article in mock_articles 
-                    if query.lower() in article['title'].lower() or query.lower() in article['snippet'].lower()
-                ]
+                # Perform real Google search
+                articles = asyncio.run(self._search_and_classify(query))
                 
                 response_body = {
                     "query": query,
-                    "articles": filtered_articles,
-                    "api_status": {
-                        "message": "Using mock data - API keys not configured",
-                        "requests_made": 0,
-                        "success_rate": 100.0
-                    }
+                    "articles": articles,
+                    "api_status": get_api_status()
                 }
                 
             elif path == '/articles':
-                # Return all mock articles
-                response_body = [
-                    {
-                        "id": "a1",
-                        "url": "https://www.reuters.com/world/us/example-article-1",
-                        "title": "Bipartisan group advances student loan policy compromise",
-                        "snippet": "Lawmakers from both parties introduced a compromise framework...",
-                        "source": "reuters.com",
-                        "published_at": None,
-                        "spectrum_score": 0.0,
-                        "confidence": 0.8,
-                        "method": "outlet",
-                        "reasoning": "Reuters maintains neutral reporting with balanced language."
-                    },
-                    {
-                        "id": "a2",
-                        "url": "https://www.foxnews.com/politics/example-article-2",
-                        "title": "Critics say loan forgiveness unfair to taxpayers",
-                        "snippet": "Opponents argue the plan shifts costs to working families...",
-                        "source": "foxnews.com",
-                        "published_at": None,
-                        "spectrum_score": 0.6,
-                        "confidence": 0.85,
-                        "method": "outlet",
-                        "reasoning": "Fox News typically leans conservative."
-                    },
-                    {
-                        "id": "a3",
-                        "url": "https://www.nytimes.com/2024/01/01/us/politics/example-article-3.html",
-                        "title": "Supporters say relief targets borrowers most in need",
-                        "snippet": "Advocates contend the program reduces default risk and boosts mobility...",
-                        "source": "nytimes.com",
-                        "published_at": None,
-                        "spectrum_score": -0.5,
-                        "confidence": 0.82,
-                        "method": "outlet",
-                        "reasoning": "The New York Times generally has a center-left editorial stance."
-                    }
-                ]
+                # For now, return search results for a general query
+                articles = asyncio.run(self._search_and_classify("latest news"))
+                response_body = articles
                 
             else:
                 self.send_response(404)
@@ -195,3 +112,40 @@ class handler(BaseHTTPRequestHandler):
                 'message': 'Internal server error',
                 'path': self.path
             }).encode())
+    
+    async def _search_and_classify(self, query: str):
+        """Search for news and classify each article"""
+        try:
+            # Get search results from Google
+            search_results = await search_news(query, num=20)
+            
+            articles = []
+            for i, result in enumerate(search_results):
+                # Extract article info
+                url = result.get('link', '')
+                title = result.get('title', '')
+                snippet = result.get('snippet', '')
+                source = extract_domain(url) or 'unknown'
+                
+                # Classify the article
+                classification = await classify_hybrid(title, snippet, source)
+                
+                article = {
+                    "id": f"article_{i}",
+                    "url": url,
+                    "title": title,
+                    "snippet": snippet,
+                    "source": source,
+                    "published_at": result.get('published_at'),
+                    "spectrum_score": classification.score,
+                    "confidence": classification.confidence,
+                    "method": classification.method,
+                    "reasoning": classification.reasoning
+                }
+                articles.append(article)
+            
+            return articles
+            
+        except Exception as e:
+            print(f"Search and classify error: {e}")
+            return []

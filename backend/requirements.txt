@@ -1,1 +1,3 @@
-# Pure Python serverless function - no external dependencies needed
+httpx
+pydantic-settings
+tldextract
