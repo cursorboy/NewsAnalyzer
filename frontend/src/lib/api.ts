@@ -40,7 +40,7 @@ export type APIStatus = {
 const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? '' : 'http://localhost:8000')
 
 export async function searchArticles(query: string, signal?: AbortSignal): Promise<SearchResponse> {
-  const url = new URL('/api/search', API_BASE)
+  const url = new URL('/search', API_BASE)
   url.searchParams.set('q', query)
   
   try {
@@ -59,7 +59,7 @@ export async function searchArticles(query: string, signal?: AbortSignal): Promi
 }
 
 export async function getAPIStatus(): Promise<APIStatus> {
-  const url = new URL('/api/api-status', API_BASE)
+  const url = new URL('/api-status', API_BASE)
   
   try {
     const res = await fetch(url.toString())
@@ -98,19 +98,19 @@ export type Narrative = {
 }
 
 export async function listArticles(): Promise<Article[]> {
-  const res = await fetch(new URL('/api/articles', API_BASE))
+  const res = await fetch(new URL('/articles', API_BASE))
   if (!res.ok) throw new Error('Failed to load articles')
   return res.json()
 }
 
 export async function getArticleDetail(id: string): Promise<ArticleDetail> {
-  const res = await fetch(new URL(`/api/articles/${id}`, API_BASE))
+  const res = await fetch(new URL(`/articles/${id}`, API_BASE))
   if (!res.ok) throw new Error('Failed to load article detail')
   return res.json()
 }
 
 export async function getNarratives(): Promise<Narrative[]> {
-  const res = await fetch(new URL('/api/narratives', API_BASE))
+  const res = await fetch(new URL('/narratives', API_BASE))
   if (!res.ok) throw new Error('Failed to load narratives')
   return res.json()
 }

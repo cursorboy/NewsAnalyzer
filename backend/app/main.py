@@ -186,18 +186,32 @@ MOCK_NARRATIVES: List[Narrative] = [
 ]
 
 
-@app.get("/api/health")
+@app.get("/")
+async def root():
+    return {
+        "message": "News Analyzer API",
+        "version": "0.1.0",
+        "endpoints": {
+            "health": "/health",
+            "search": "/search?q=query",
+            "api_status": "/api-status",
+            "articles": "/articles",
+            "narratives": "/narratives"
+        }
+    }
+
+@app.get("/health")
 async def health():
     return {"status": "ok"}
 
 
-@app.get("/api/api-status", response_model=APIStatusResponse)
+@app.get("/api-status", response_model=APIStatusResponse)
 async def api_status():
     """Get current Google API usage status and rate limit information"""
     return get_api_status()
 
 
-@app.get("/api/search", response_model=SearchResponse)
+@app.get("/search", response_model=SearchResponse)
 async def search(q: str = Query(..., min_length=2)):
     # Check if Google API is configured
     if not settings.google_api_key or not settings.google_cse_id:
@@ -279,19 +293,19 @@ async def search(q: str = Query(..., min_length=2)):
 
 
 # Prototype endpoints for the 72-hour deliverable
-@app.get("/api/articles", response_model=List[Article])
+@app.get("/articles", response_model=List[Article])
 async def list_articles() -> List[Article]:
     # Return mock data for now; could be replaced by live search
     return MOCK_ARTICLES
 
 
-@app.get("/api/articles/{article_id}", response_model=ArticleDetail)
+@app.get("/articles/{article_id}", response_model=ArticleDetail)
 async def get_article(article_id: str) -> ArticleDetail:
     if article_id not in MOCK_DETAILS:
         raise HTTPException(status_code=404, detail="Article not found")
     return MOCK_DETAILS[article_id]
 
 
-@app.get("/api/narratives", response_model=List[Narrative])
+@app.get("/narratives", response_model=List[Narrative])
 async def get_narratives() -> List[Narrative]:
     return MOCK_NARRATIVES
