@@ -12,3 +12,7 @@ from app.main import app
 
 # Create the Mangum handler for Vercel
 handler = Mangum(app)
+
+# Export for Vercel (alternative names)
+app_handler = handler
+main = handler
