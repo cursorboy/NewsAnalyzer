@@ -39,12 +39,23 @@ export type APIStatus = {
 // Resolve API base: Use relative path in production, localhost in dev
 const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? '' : 'http://localhost:8000')
 
+// Debug logging
+console.log('🔍 API Configuration:', {
+  VITE_API_BASE: import.meta.env.VITE_API_BASE,
+  PROD: import.meta.env.PROD,
+  API_BASE,
+  NODE_ENV: import.meta.env.NODE_ENV
+})
+
 export async function searchArticles(query: string, signal?: AbortSignal): Promise<SearchResponse> {
   const url = new URL('/search', API_BASE)
   url.searchParams.set('q', query)
   
+  console.log('🌐 Making API request to:', url.toString())
+  
   try {
     const res = await fetch(url.toString(), { signal })
+    console.log('📡 API Response:', { status: res.status, statusText: res.statusText, url: url.toString() })
     if (!res.ok) {
       throw new Error(`Search failed: ${res.status} ${res.statusText}`)
     }
