@@ -1,16 +1,1 @@
-{
-  "functions": {
-    "main.py": {
-      "runtime": "@vercel/python"
-    },
-    "index.py": {
-      "runtime": "@vercel/python"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.py"
-    }
-  ]
-}
+{}
