@@ -138,7 +138,9 @@ def extract_domain(url: str) -> Optional[str]:
 
 async def classify_with_ai(title: str, snippet: str, source: str) -> Classification:
     """Use OpenAI to analyze article bias with detailed reasoning"""
+    print(f"Debug classify_with_ai: OpenAI key configured: {bool(settings.openai_api_key)}")
     if not settings.openai_api_key:
+        print("Debug: No OpenAI API key, falling back to outlet classification")
         # Fallback to outlet-based classification
         return classify_by_outlet(f"https://{source}")
     
@@ -195,15 +197,17 @@ Respond in this exact JSON format:
             )
             
             if response.status_code != 200:
-                print(f"OpenAI API error: {response.status_code} - {response.text}")
+                print(f"Debug: OpenAI API error: {response.status_code} - {response.text}")
                 return classify_by_outlet(f"https://{source}")
             
             result = response.json()
             content = result["choices"][0]["message"]["content"]
+            print(f"Debug: OpenAI API response received: {content[:100]}...")
             
             # Parse the JSON response
             try:
                 analysis = json.loads(content)
+                print(f"Debug: Successfully parsed OpenAI response, returning AI classification")
                 return Classification(
                     score=float(analysis["bias_score"]),
                     confidence=float(analysis["confidence"]),
@@ -211,12 +215,14 @@ Respond in this exact JSON format:
                     reasoning=analysis["reasoning"]
                 )
             except (json.JSONDecodeError, KeyError, ValueError) as e:
-                print(f"Failed to parse OpenAI response: {e}")
-                print(f"Response content: {content}")
+                print(f"Debug: Failed to parse OpenAI response: {e}")
+                print(f"Debug: Response content: {content}")
                 return classify_by_outlet(f"https://{source}")
                 
     except Exception as e:
-        print(f"AI classification failed: {e}")
+        print(f"Debug: AI classification failed: {e}")
+        import traceback
+        traceback.print_exc()
         return classify_by_outlet(f"https://{source}")
 
 

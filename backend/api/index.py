@@ -116,8 +116,15 @@ class handler(BaseHTTPRequestHandler):
     async def _search_and_classify(self, query: str):
         """Search for news and classify each article"""
         try:
+            # Check if OpenAI API key is configured
+            from app.config import settings
+            print(f"Debug: OpenAI API key configured: {bool(settings.openai_api_key)}")
+            if settings.openai_api_key:
+                print(f"Debug: OpenAI API key starts with: {settings.openai_api_key[:10]}...")
+            
             # Get search results from Google
             search_results = await search_news(query, num=20)
+            print(f"Debug: Got {len(search_results)} search results")
             
             articles = []
             for i, result in enumerate(search_results):
@@ -127,8 +134,12 @@ class handler(BaseHTTPRequestHandler):
                 snippet = result.get('snippet', '')
                 source = extract_domain(url) or 'unknown'
                 
+                print(f"Debug: Classifying article {i}: {title[:50]}... from {source}")
+                
                 # Classify the article using AI analysis
                 classification = await classify_with_ai(title, snippet, source)
+                
+                print(f"Debug: Classification result - method: {classification.method}, score: {classification.score}, confidence: {classification.confidence}")
                 
                 article = {
                     "id": f"article_{i}",
@@ -148,4 +159,6 @@ class handler(BaseHTTPRequestHandler):
             
         except Exception as e:
             print(f"Search and classify error: {e}")
+            import traceback
+            traceback.print_exc()
             return []
