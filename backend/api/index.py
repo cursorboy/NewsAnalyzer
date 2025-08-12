@@ -122,6 +122,7 @@ def handler(event, context):
             }
             
         elif path == '/articles':
+            # Return all mock articles
             response_body = [
                 {
                     "id": "a1",
@@ -134,6 +135,30 @@ def handler(event, context):
                     "confidence": 0.8,
                     "method": "outlet",
                     "reasoning": "Reuters maintains neutral reporting with balanced language."
+                },
+                {
+                    "id": "a2",
+                    "url": "https://www.foxnews.com/politics/example-article-2",
+                    "title": "Critics say loan forgiveness unfair to taxpayers",
+                    "snippet": "Opponents argue the plan shifts costs to working families...",
+                    "source": "foxnews.com",
+                    "published_at": None,
+                    "spectrum_score": 0.6,
+                    "confidence": 0.85,
+                    "method": "outlet",
+                    "reasoning": "Fox News typically leans conservative."
+                },
+                {
+                    "id": "a3",
+                    "url": "https://www.nytimes.com/2024/01/01/us/politics/example-article-3.html",
+                    "title": "Supporters say relief targets borrowers most in need",
+                    "snippet": "Advocates contend the program reduces default risk and boosts mobility...",
+                    "source": "nytimes.com",
+                    "published_at": None,
+                    "spectrum_score": -0.5,
+                    "confidence": 0.82,
+                    "method": "outlet",
+                    "reasoning": "The New York Times generally has a center-left editorial stance."
                 }
             ]
             
