@@ -63,8 +63,14 @@ function Landing() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100/50 via-slate-50 to-red-100/50">
-      <div className="mx-auto max-w-4xl px-6 pt-28 pb-16 text-center">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 via-pink-100 to-orange-200 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-red-400/20 to-pink-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-300/10 to-yellow-300/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+      </div>
+      <div className="relative z-10 mx-auto max-w-4xl px-6 pt-28 pb-16 text-center">
         <span className="inline-flex items-center rounded-full border bg-white/70 backdrop-blur px-3 py-1 text-xs font-medium text-gray-700">Political Spectrum News Analyzer</span>
         <h1 className="mt-6 text-4xl md:text-6xl font-extrabold tracking-tight text-gray-900 text-center">TheBiasGraph</h1>
         <p className="mt-4 text-lg text-gray-600 text-center">Search any topic and choose how to explore the coverage across the political spectrum.</p>

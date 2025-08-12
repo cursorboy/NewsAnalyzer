@@ -95,13 +95,16 @@ export default function Game() {
     try {
       // If we have a search query, use it
       if (searchQuery) {
-        const cachedArticles = getCachedArticles(searchQuery)
-        if (cachedArticles) {
-          console.log(`Using ${cachedArticles.length} cached articles for "${searchQuery}" - no API call needed!`)
-          return processArticlesForGame(cachedArticles)
+        console.log(`Looking for cached articles for query: "${searchQuery}"`)
+        console.log('Available cached queries:', Object.keys(cachedArticles))
+        
+        const cachedArticlesData = getCachedArticles(searchQuery)
+        if (cachedArticlesData && cachedArticlesData.length > 0) {
+          console.log(`✅ Using ${cachedArticlesData.length} cached articles for "${searchQuery}" - no API call needed!`)
+          return processArticlesForGame(cachedArticlesData)
         }
         
-        console.log(`No cached articles found for "${searchQuery}", making API call...`)
+        console.log(`❌ No cached articles found for "${searchQuery}", making API call...`)
         const data = await searchArticles(searchQuery)
         cacheArticles(searchQuery, data.articles)
         return processArticlesForGame(data.articles)
