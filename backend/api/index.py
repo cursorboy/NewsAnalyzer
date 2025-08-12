@@ -4,8 +4,8 @@ import json
 from fastapi import FastAPI
 from mangum import Mangum
 
-# Add the backend directory to Python path
-backend_path = os.path.join(os.path.dirname(__file__), "..", "backend")
+# Add the backend app directory to Python path
+backend_path = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, backend_path)
 
 try:

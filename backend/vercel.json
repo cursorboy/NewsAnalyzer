@@ -1,20 +1,20 @@
 {
   "functions": {
-    "index.py": {
+    "api/index.py": {
       "runtime": "@vercel/python"
     },
-    "test.py": {
+    "api/test.py": {
       "runtime": "@vercel/python"
     }
   },
   "rewrites": [
     {
       "source": "/test",
-      "destination": "/test.py"
+      "destination": "/api/test.py"
     },
     {
       "source": "/(.*)",
-      "destination": "/index.py"
+      "destination": "/api/index.py"
     }
   ]
 }
