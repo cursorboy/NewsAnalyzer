@@ -9,7 +9,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from app.services.google import search_news, get_api_status
-from app.services.classifier import classify_hybrid, extract_domain
+from app.services.classifier import classify_with_ai, classify_by_outlet, extract_domain
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -127,8 +127,8 @@ class handler(BaseHTTPRequestHandler):
                 snippet = result.get('snippet', '')
                 source = extract_domain(url) or 'unknown'
                 
-                # Classify the article
-                classification = await classify_hybrid(title, snippet, source)
+                # Classify the article using AI analysis
+                classification = await classify_with_ai(title, snippet, source)
                 
                 article = {
                     "id": f"article_{i}",
