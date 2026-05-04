@@ -17,6 +17,6 @@
     { "source": "/api-status", "destination": "/api/index" },
     { "source": "/games/compare-pair", "destination": "/api/index" },
     { "source": "/games/headline-rewrite/score", "destination": "/api/index" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/|search|articles/|analyze|api-status|games/|assets/|favicon).*)", "destination": "/index.html" }
   ]
 }
