@@ -268,6 +268,102 @@ async def classify_with_ai(title: str, snippet: str, source: str) -> Classificat
     return await asyncio.to_thread(_classify_with_ai_sync, title, snippet, source)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Full 8-dimension scorer used by /api/analyze and /api/articles/:id detail
+# ─────────────────────────────────────────────────────────────────────────────
+
+DIMENSIONS_SYSTEM_PROMPT = (
+    "You are a forensic media analyst. You score US political news articles on "
+    "five orthogonal framing dimensions, returning numeric values that reflect the "
+    "article's framing choices. You never default to neutral when there is signal."
+)
+
+
+def _build_dimensions_prompt(title: str, body: str, source: str) -> str:
+    return f"""
+Score this article on five framing dimensions. Use the article's HEADLINE + LEDE (opening paragraphs) — that's where editorial framing concentrates.
+
+HEADLINE: {title}
+LEDE: {body}
+SOURCE: {source}
+
+Score these on the specified ranges. Most articles are NOT 0.0 on the bipolar ones.
+
+1. factuality (0..1, where 1.0 = sourced/cited claims, 0.0 = pure opinion/unverifiable assertions)
+2. economic (-1..+1, where -1 = pro-redistribution / anti-corporate framing, +1 = pro-market / pro-business framing)
+3. social (-1..+1, where -1 = progressive framing on identity/culture, +1 = traditional framing on identity/culture)
+4. establishment (-1..+1, where -1 = anti-establishment / outsider framing, +1 = pro-establishment / institutional framing)
+5. sensationalism (0..1, where 1.0 = heavy emotional language, breathless tone, 0.0 = dry wire-service tone)
+
+Cite at least one specific phrase from the article that drove each dimension.
+
+Respond in this exact JSON format. All numeric values are floats.
+{{
+    "factuality": <0..1>,
+    "economic": <-1..1>,
+    "social": <-1..1>,
+    "establishment": <-1..1>,
+    "sensationalism": <0..1>,
+    "rationale": "<one sentence per dimension citing specific phrases>"
+}}
+"""
+
+
+@dataclass
+class Dimensions:
+    factuality: float
+    economic: float
+    social: float
+    establishment: float
+    sensationalism: float
+    rationale: Optional[str] = None
+
+
+def _score_dimensions_sync(title: str, body: str, source: str) -> Dimensions:
+    """Compute the 5 framing dimensions in one LLM call. Falls back to safe
+    defaults on any failure so the analyze endpoint never crashes."""
+    fallback = Dimensions(
+        factuality=0.6,
+        economic=0.0,
+        social=0.0,
+        establishment=0.0,
+        sensationalism=0.0,
+        rationale=None,
+    )
+    if not settings.openai_api_key:
+        return fallback
+    try:
+        provider = get_provider()
+    except Exception as e:
+        print(f"Debug: dimensions provider unavailable: {e}")
+        return fallback
+
+    try:
+        content = provider.complete(
+            system=DIMENSIONS_SYSTEM_PROMPT,
+            user=_build_dimensions_prompt(title, body or title, source),
+            response_format={"type": "json_object"},
+        )
+        d = json.loads(content)
+        clamp01 = lambda v: max(0.0, min(1.0, float(v)))
+        clampUnit = lambda v: max(-1.0, min(1.0, float(v)))
+        return Dimensions(
+            factuality=clamp01(d.get("factuality", 0.6)),
+            economic=clampUnit(d.get("economic", 0.0)),
+            social=clampUnit(d.get("social", 0.0)),
+            establishment=clampUnit(d.get("establishment", 0.0)),
+            sensationalism=clamp01(d.get("sensationalism", 0.0)),
+            rationale=d.get("rationale"),
+        )
+    except Exception as e:
+        print(f"Debug: dimensions scoring failed: {e}")
+        return fallback
+
+
+async def score_dimensions(title: str, body: str, source: str) -> Dimensions:
+    return await asyncio.to_thread(_score_dimensions_sync, title, body, source)
+
+
 def classify_by_outlet(url: str) -> Classification:
     domain = extract_domain(url) or ""
     if domain in OUTLET_BIAS:

@@ -11,7 +11,13 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
 from app.services.search import search_news, get_api_status
-from app.services.classifier import classify_with_ai, classify_by_outlet, classify_hybrid, extract_domain
+from app.services.classifier import (
+    classify_with_ai,
+    classify_by_outlet,
+    classify_hybrid,
+    extract_domain,
+    score_dimensions,
+)
 from app.services.linguistic import (
     detect_loaded_language,
     compute_source_diversity,
@@ -96,18 +102,28 @@ def _fetch_url(url: str) -> tuple[str, str]:
 
 
 def _build_article_detail(article_id: str, title: str, body: str, url: str = "", source: str = "") -> dict:
-    """Run classifier + linguistic services and return an ArticleDetail-shaped dict."""
+    """Run classifier + dimensions scorer + linguistic services and return an
+    ArticleDetail-shaped dict with all 8 bias dimensions populated."""
     snippet = body[:600] if body else ""
-    classification = asyncio.run(classify_with_ai(title or "", snippet, source or extract_domain(url) or "unknown"))
+    src = source or extract_domain(url) or "unknown"
+
+    classification = asyncio.run(classify_with_ai(title or "", snippet, src))
+    framing = asyncio.run(score_dimensions(title or "", body or snippet, src))
 
     loaded_phrases = detect_loaded_language(body or title)
     source_diversity = compute_source_diversity(body or title)
     headline_body_skew = compute_headline_body_skew(title or "", body or "")
 
-    dims = _zero_dimensions()
-    dims["loaded_language"] = max(0.0, min(1.0, len(loaded_phrases) / 10.0))
-    dims["source_diversity"] = source_diversity["score"]
-    dims["headline_body_skew"] = max(-1.0, min(1.0, headline_body_skew["delta"]))
+    dims = {
+        "factuality": framing.factuality,
+        "economic": framing.economic,
+        "social": framing.social,
+        "establishment": framing.establishment,
+        "sensationalism": framing.sensationalism,
+        "loaded_language": max(0.0, min(1.0, len(loaded_phrases) / 10.0)),
+        "source_diversity": source_diversity["score"],
+        "headline_body_skew": max(-1.0, min(1.0, headline_body_skew["delta"])),
+    }
 
     article = {
         "id": article_id,
