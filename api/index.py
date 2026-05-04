@@ -185,6 +185,12 @@ class handler(BaseHTTPRequestHandler):
         try:
             parsed_url = urlparse(self.path)
             path = parsed_url.path
+            # Frontend now calls /api/* paths to avoid colliding with SPA
+            # routes (e.g. /search is a React Router route). Strip the /api
+            # prefix so existing dispatch logic that matches /search,
+            # /analyze, /articles/:id, etc. continues to work.
+            if path.startswith('/api/'):
+                path = path[4:]  # '/api/search' -> '/search'
             query_params = parse_qs(parsed_url.query)
             query_params = {k: v[0] if v else '' for k, v in query_params.items()}
 

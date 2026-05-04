@@ -48,7 +48,7 @@ console.log('🔍 API Configuration:', {
 })
 
 export async function searchArticles(query: string, signal?: AbortSignal): Promise<SearchResponse> {
-  const url = new URL('/search', API_BASE)
+  const url = new URL('/api/search', API_BASE)
   url.searchParams.set('q', query)
   
   console.log('🌐 Making API request to:', url.toString())
@@ -70,7 +70,7 @@ export async function searchArticles(query: string, signal?: AbortSignal): Promi
 }
 
 export async function getAPIStatus(): Promise<APIStatus> {
-  const url = new URL('/api-status', API_BASE)
+  const url = new URL('/api/api-status', API_BASE)
   
   try {
     const res = await fetch(url.toString())
@@ -129,19 +129,19 @@ export type Narrative = {
 }
 
 export async function listArticles(): Promise<Article[]> {
-  const res = await fetch(new URL('/articles', API_BASE))
+  const res = await fetch(new URL('/api/articles', API_BASE))
   if (!res.ok) throw new Error('Failed to load articles')
   return res.json()
 }
 
 export async function getArticleDetail(id: string): Promise<ArticleDetail> {
-  const res = await fetch(new URL(`/articles/${id}`, API_BASE))
+  const res = await fetch(new URL(`/api/articles/${id}`, API_BASE))
   if (!res.ok) throw new Error('Failed to load article detail')
   return res.json()
 }
 
 export async function getNarratives(): Promise<Narrative[]> {
-  const res = await fetch(new URL('/narratives', API_BASE))
+  const res = await fetch(new URL('/api/narratives', API_BASE))
   if (!res.ok) throw new Error('Failed to load narratives')
   return res.json()
 }
@@ -149,7 +149,7 @@ export async function getNarratives(): Promise<Narrative[]> {
 export type AnalyzeRequest = { url?: string; text?: string; title?: string }
 
 export async function analyzeArticle(req: AnalyzeRequest): Promise<ArticleDetail> {
-  const res = await fetch(new URL('/analyze', API_BASE), {
+  const res = await fetch(new URL('/api/analyze', API_BASE), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
@@ -165,7 +165,7 @@ export type ComparePair = {
 }
 
 export async function getComparePair(query: string): Promise<ComparePair> {
-  const url = new URL('/games/compare-pair', API_BASE)
+  const url = new URL('/api/games/compare-pair', API_BASE)
   url.searchParams.set('q', query)
   const res = await fetch(url.toString())
   if (!res.ok) throw new Error('Failed to load compare pair')
@@ -182,7 +182,7 @@ export async function scoreHeadlineRewrite(
   original: string,
   rewrite: string,
 ): Promise<HeadlineRewriteScore> {
-  const res = await fetch(new URL('/games/headline-rewrite/score', API_BASE), {
+  const res = await fetch(new URL('/api/games/headline-rewrite/score', API_BASE), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ original, rewrite }),

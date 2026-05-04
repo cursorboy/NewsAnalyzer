@@ -11,12 +11,7 @@
     }
   },
   "rewrites": [
-    { "source": "/search", "destination": "/api/index" },
-    { "source": "/articles/:id", "destination": "/api/index" },
-    { "source": "/analyze", "destination": "/api/index" },
-    { "source": "/api-status", "destination": "/api/index" },
-    { "source": "/games/compare-pair", "destination": "/api/index" },
-    { "source": "/games/headline-rewrite/score", "destination": "/api/index" },
-    { "source": "/((?!api/|search|articles/|analyze|api-status|games/|assets/|favicon).*)", "destination": "/index.html" }
+    { "source": "/api/:path*", "destination": "/api/index" },
+    { "source": "/((?!api/|assets/|favicon).*)", "destination": "/index.html" }
   ]
 }
