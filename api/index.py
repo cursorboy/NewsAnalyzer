@@ -5,8 +5,10 @@ import sys
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
-# Add the parent directory to sys.path to import from app
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# File lives at <project>/api/index.py. Backend services live at
+# <project>/backend/app/. Insert <project>/backend into sys.path so
+# `from app.services...` imports resolve in the Vercel runtime.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
 
 from app.services.search import search_news, get_api_status
 from app.services.classifier import classify_with_ai, classify_by_outlet, classify_hybrid, extract_domain

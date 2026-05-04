@@ -5,18 +5,18 @@
   "installCommand": "cd frontend && npm install",
   "framework": null,
   "functions": {
-    "backend/api/index.py": {
-      "includeFiles": "backend/app/**",
+    "api/index.py": {
+      "includeFiles": "backend/**",
       "maxDuration": 60
     }
   },
   "rewrites": [
-    { "source": "/search", "destination": "/backend/api/index" },
-    { "source": "/articles/:id", "destination": "/backend/api/index" },
-    { "source": "/analyze", "destination": "/backend/api/index" },
-    { "source": "/api-status", "destination": "/backend/api/index" },
-    { "source": "/games/compare-pair", "destination": "/backend/api/index" },
-    { "source": "/games/headline-rewrite/score", "destination": "/backend/api/index" },
+    { "source": "/search", "destination": "/api/index" },
+    { "source": "/articles/:id", "destination": "/api/index" },
+    { "source": "/analyze", "destination": "/api/index" },
+    { "source": "/api-status", "destination": "/api/index" },
+    { "source": "/games/compare-pair", "destination": "/api/index" },
+    { "source": "/games/headline-rewrite/score", "destination": "/api/index" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
