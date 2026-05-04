@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Masthead from '../components/Masthead'
 
@@ -81,6 +81,8 @@ function fmtBest(n: number): string {
 
 export default function PlayHub() {
   const [bests, setBests] = useState<Record<string, number>>({})
+  const [searchParams] = useSearchParams()
+  const incomingQuery = searchParams.get('q')?.trim() || ''
 
   useEffect(() => {
     const next: Record<string, number> = {}
@@ -119,15 +121,28 @@ export default function PlayHub() {
           </div>
         </section>
 
+        {incomingQuery && (
+          <div className="mt-10 flex items-baseline gap-3 font-sans text-[11px] uppercase tracking-[0.22em] text-ink/65">
+            <span className="font-mono tabular-nums text-ink/40">→</span>
+            <span>Carrying topic into every game</span>
+            <span className="font-serif normal-case tracking-normal italic text-ink">
+              &ldquo;{incomingQuery}&rdquo;
+            </span>
+          </div>
+        )}
+
         {/* 2x2 game grid */}
         <section className="mt-14 grid grid-cols-1 md:grid-cols-2 border-t-2 border-ink">
           {GAMES.map((g, i) => {
             const best = bests[g.storageKey] ?? 0
             const isRightCol = i % 2 === 1
+            const href = incomingQuery
+              ? `${g.href}?q=${encodeURIComponent(incomingQuery)}`
+              : g.href
             return (
               <GameCard
                 key={g.href}
-                game={g}
+                game={{ ...g, href }}
                 best={best}
                 bordered={isRightCol}
               />

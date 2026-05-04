@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getComparePair, fallbackComparePair, type ComparePair } from '../../lib'
 import Masthead from '../Masthead'
@@ -70,6 +70,8 @@ async function tryGetPair(topic: string): Promise<ComparePair> {
 
 export default function CompareTakes() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const topicQuery = searchParams.get('q')?.trim() || ''
   const score = useGameScore({ totalRounds: TOTAL_ROUNDS, storageKey: STORAGE_KEY })
 
   const [phase, setPhase] = useState<Phase>('menu')
@@ -95,7 +97,12 @@ export default function CompareTakes() {
     setLoading(true)
     setLoadError(null)
     try {
-      const queue = shuffle(TOPICS)
+      // If the user came via "Play with this query" from /search, lead with
+      // their topic. The remaining TOPICS get shuffled in afterward so the
+      // game still has variety across the 10 rounds.
+      const queue = topicQuery
+        ? [topicQuery, ...shuffle(TOPICS.filter((t) => t !== topicQuery))]
+        : shuffle(TOPICS)
       const result = await loadNextPair(queue)
       setLoading(false)
       setPair(result.pair)

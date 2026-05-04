@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Article, HeadlineRewriteScore } from '../../lib'
 import { searchArticles, scoreHeadlineRewrite, fallbackSearch, fallbackHeadlineScore } from '../../lib'
@@ -101,6 +101,8 @@ function FauxProgress() {
 
 export default function HeadlineRewrite() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const topicQuery = searchParams.get('q')?.trim() || ''
   const score = useGameScore({ totalRounds: TOTAL_ROUNDS, storageKey: STORAGE_KEY })
 
   const [phase, setPhase] = useState<Phase>('menu')
@@ -119,7 +121,12 @@ export default function HeadlineRewrite() {
   const fetchPool = async (): Promise<Article[]> => {
     const collected: Article[] = []
     const seen = new Set<string>()
-    for (const q of shuffle(SEED_QUERIES)) {
+    // Honor ?q= from the URL — when the user came in via "Play with this query"
+    // from /search, that topic should drive what they're rewriting.
+    const queries = topicQuery
+      ? [topicQuery, ...SEED_QUERIES.filter((q) => q !== topicQuery)]
+      : shuffle(SEED_QUERIES)
+    for (const q of queries) {
       try {
         const data = await searchArticles(q)
         for (const a of data.articles) {

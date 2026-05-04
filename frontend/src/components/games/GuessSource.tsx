@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Article } from '../../lib'
 import { searchArticles, fallbackSearch } from '../../lib'
@@ -57,6 +57,8 @@ function pickDistractors(real: string, n: number): string[] {
 
 export default function GuessSource() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const topicQuery = searchParams.get('q')?.trim() || ''
   const score = useGameScore({ totalRounds: TOTAL_ROUNDS, storageKey: STORAGE_KEY })
 
   const [phase, setPhase] = useState<Phase>('menu')
@@ -78,7 +80,13 @@ export default function GuessSource() {
   const fetchPool = async (): Promise<Article[]> => {
     const collected: Article[] = []
     const seen = new Set<string>()
-    for (const q of shuffle(SEED_QUERIES)) {
+    // Honor ?q= from the URL — when the user came in via "Play with this query"
+    // from /search, that topic should drive what they're guessing. Fall through
+    // to the broader seed queries afterward to ensure ten rounds of variety.
+    const queries = topicQuery
+      ? [topicQuery, ...SEED_QUERIES.filter((q) => q !== topicQuery)]
+      : shuffle(SEED_QUERIES)
+    for (const q of queries) {
       try {
         const data = await searchArticles(q)
         for (const a of data.articles) {
