@@ -10,7 +10,6 @@ import {
   runForwardPass,
   tokenizePreview,
   formatBytes,
-  formatMs,
   sha256Hex,
   type LoadedRuntime,
   type InferenceArtifacts,
@@ -408,7 +407,7 @@ export default function InferenceLab() {
               </div>
               <div className="col-span-7">
                 <SectionHeader numeral="§ VII" label="Devtools" />
-                <DevtoolsPanel artifacts={artifacts} text={text} />
+                <DevtoolsPanel artifacts={artifacts} text={text} loaded={loaded} />
               </div>
             </div>
           </div>
@@ -448,17 +447,6 @@ function PlainEnglish({ children }: { children: React.ReactNode }) {
         In plain English
       </div>
       <p className="font-serif text-[14px] text-ink/75 leading-snug">{children}</p>
-    </div>
-  )
-}
-
-function TechNote({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-3 font-mono text-[11px] leading-[1.55] text-ink/55 border-t border-dotted border-ink/25 pt-2">
-      <span className="font-sans uppercase tracking-[0.22em] text-[9px] text-ink/45 mr-2">
-        for ML readers
-      </span>
-      {children}
     </div>
   )
 }
@@ -1439,26 +1427,27 @@ function HashBlock({ label, value }: { label: string; value: string | null }) {
 function DevtoolsPanel({
   artifacts,
   text,
+  loaded,
 }: {
   artifacts: InferenceArtifacts | null
   text: string
+  loaded: LoadedRuntime | null
 }) {
   const truncatedInput =
     text.length > 48 ? `${text.slice(0, 45)}...` : text
   const reply = artifacts
     ? `{ label: "${artifacts.argmaxLabel}", probs: [${artifacts.probs.map((p) => p.toFixed(3)).join(', ')}], logits: [${artifacts.logits.map((l) => l.toFixed(3)).join(', ')}], tokens: [${artifacts.tokenStrings.length}] }`
-    : '{ … run forward pass to populate … }'
+    : '// run forward pass to populate'
+
+  const cfgReply = loaded
+    ? `{ model: "${MODEL_ID.split('/')[1]}", layers: ${loaded.config.numLayers}, heads: ${loaded.config.numHeads}, hidden: ${loaded.config.hiddenDim} }`
+    : '// load model to populate'
 
   const lines: Array<['>' | '<', string]> = [
     ['>', `await window.tbgInfer("${truncatedInput}")`],
     ['<', reply],
     ['>', 'window.tbgConfig'],
-    [
-      '<',
-      artifacts
-        ? `{ model: "${MODEL_ID.split('/')[1]}", layers: 6, heads: 12, hidden: 768 }`
-        : '{ … }',
-    ],
+    ['<', cfgReply],
   ]
 
   const globals: Array<[string, string]> = [
