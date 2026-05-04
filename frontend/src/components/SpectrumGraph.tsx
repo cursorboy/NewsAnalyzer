@@ -1,6 +1,29 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { SAMPLE_ARTICLES, type ArticleMarker } from '../lib/sampleArticles'
+
+// Redistribute vertical positions so markers that share roughly the same
+// x-position don't visually stack on top of each other. Articles are bucketed
+// by 0.06-wide x-slots; within each slot, y values are evenly distributed
+// across the plot area (0.10 – 0.90) using a small dataset-aware algorithm.
+function dejitter(input: ArticleMarker[]): ArticleMarker[] {
+  const SLOT = 0.06
+  const buckets = new Map<number, number[]>()
+  input.forEach((_, i) => {
+    const key = Math.round(input[i].x / SLOT)
+    if (!buckets.has(key)) buckets.set(key, [])
+    buckets.get(key)!.push(i)
+  })
+  const out = input.map((m) => ({ ...m }))
+  buckets.forEach((indices) => {
+    if (indices.length === 1) return
+    // Distribute evenly between 0.12 and 0.88 of plot height
+    indices.forEach((idx, k) => {
+      out[idx].y = 0.12 + (k / Math.max(1, indices.length - 1)) * 0.76
+    })
+  })
+  return out
+}
 
 const SPECTRUM_GRADIENT =
   'linear-gradient(to right, #1d3a8a 0%, #2563eb 18%, #93c5fd 38%, #e7e2d2 50%, #fca5a5 62%, #dc2626 82%, #7f1d1d 100%)'
@@ -36,6 +59,7 @@ export default function SpectrumGraph({
   const innerH = height - 120
   const stats = aggregate(articles)
   const dot = compact ? 8 : 10
+  const laidOut = useMemo(() => dejitter(articles), [articles])
 
   return (
     <div className="relative w-full select-none" style={{ height }}>
@@ -89,10 +113,25 @@ export default function SpectrumGraph({
         ))}
         <div className="absolute top-0 bottom-0 w-px bg-ink/20" style={{ left: '50%' }} />
 
-        {articles.map((a, i) => {
+        {laidOut.map((a, i) => {
           const left = `${((a.x + 1) / 2) * 100}%`
           const top = `${a.y * 100}%`
           const isHover = hoverIdx === i
+          const Inner = (
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className="rounded-full border border-ink/70 bg-paper-cream shadow-[0_1px_0_rgba(0,0,0,0.08)] cursor-pointer transition-transform"
+                style={{
+                  width: dot,
+                  height: dot,
+                  transform: isHover ? 'scale(1.6)' : 'scale(1)',
+                }}
+              />
+              <div className="font-sans text-[9px] tabular-nums uppercase tracking-[0.14em] text-ink/55 whitespace-nowrap">
+                {a.short}
+              </div>
+            </div>
+          )
           return (
             <motion.div
               key={`${a.src}-${i}`}
@@ -108,23 +147,23 @@ export default function SpectrumGraph({
               onMouseEnter={() => setHoverIdx(i)}
               onMouseLeave={() => setHoverIdx((h) => (h === i ? null : h))}
             >
-              <div className="flex flex-col items-center gap-1">
-                <div
-                  className="rounded-full border border-ink/70 bg-paper-cream shadow-[0_1px_0_rgba(0,0,0,0.08)] cursor-pointer transition-transform"
-                  style={{
-                    width: dot,
-                    height: dot,
-                    transform: isHover ? 'scale(1.6)' : 'scale(1)',
-                  }}
-                />
-                <div className="font-sans text-[9px] tabular-nums uppercase tracking-[0.14em] text-ink/55 whitespace-nowrap">
-                  {a.short}
-                </div>
-              </div>
+              {a.url ? (
+                <a
+                  href={a.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  aria-label={`Open original article: ${a.title}`}
+                  className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  {Inner}
+                </a>
+              ) : (
+                Inner
+              )}
 
               {isHover && (
                 <div
-                  className="absolute z-20 left-1/2 -translate-x-1/2 border border-ink/30 bg-paper p-3 max-w-xs shadow-[0_2px_0_rgba(0,0,0,0.06)]"
+                  className="absolute z-20 left-1/2 -translate-x-1/2 border border-ink/30 bg-paper p-3 max-w-xs shadow-[0_2px_0_rgba(0,0,0,0.06)] pointer-events-none"
                   style={{ bottom: 'calc(100% + 10px)', minWidth: 240 }}
                   role="tooltip"
                 >
@@ -142,6 +181,11 @@ export default function SpectrumGraph({
                   {a.why ? (
                     <div className="mt-2 font-serif italic text-[12px] leading-snug text-ink/60">
                       {a.why}
+                    </div>
+                  ) : null}
+                  {a.url ? (
+                    <div className="mt-2 font-sans text-[9px] uppercase tracking-[0.22em] text-accent">
+                      Click to read &rarr;
                     </div>
                   ) : null}
                 </div>

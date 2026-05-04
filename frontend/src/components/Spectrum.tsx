@@ -33,6 +33,7 @@ function articlesToMarkers(arts: Article[]): ArticleMarker[] {
     title: a.title,
     why: fallbackWhy(a, i + 1),
     score: a.spectrum_score,
+    url: a.url,
   }))
 }
 
@@ -164,31 +165,51 @@ function Clipping({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: dim ? 0.4 : 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="group cursor-pointer"
-      onClick={onSelect}
+      whileHover={{ y: -2 }}
+      className="group relative"
     >
-      <div className={isSelected ? 'h-[3px] bg-ink' : 'h-px bg-ink/35'} aria-hidden />
+      {/* Whole-card click target → opens the original article. Sits behind the
+          inline footer links so the hover/click for the card is unmissable
+          but Analyze/Original links still take precedence on click. */}
+      <a
+        href={article.url}
+        target="_blank"
+        rel="noreferrer noopener"
+        aria-label={`Read original article: ${article.title}`}
+        className="absolute inset-0 z-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      />
 
-      <header className="flex items-baseline justify-between gap-3 pt-3">
-        <div className="flex items-baseline gap-3 font-sans text-[11px] uppercase tracking-[0.22em] text-ink/65">
-          <span className="font-mono tabular-nums text-ink/40">N° {num}</span>
-          <span>{article.source}</span>
-        </div>
-        <span className="inline-flex items-center border border-ink px-1.5 py-[1px] font-display font-black text-[12px] tabular-nums leading-none text-ink">
-          {sign}
-          {Math.abs(score).toFixed(2)}
-        </span>
-      </header>
+      <div
+        className={`relative z-[1] pointer-events-none transition-colors ${
+          isSelected ? '' : 'group-hover:[&_.rule]:bg-accent'
+        }`}
+      >
+        <div
+          className={`rule ${isSelected ? 'h-[3px] bg-ink' : 'h-px bg-ink/35'} transition-colors`}
+          aria-hidden
+        />
 
-      <h3 className="mt-3 font-serif text-[20px] leading-[1.2] text-ink group-hover:text-accent transition-colors md:text-[22px]">
-        {article.title}
-      </h3>
+        <header className="flex items-baseline justify-between gap-3 pt-3">
+          <div className="flex items-baseline gap-3 font-sans text-[11px] uppercase tracking-[0.22em] text-ink/65">
+            <span className="font-mono tabular-nums text-ink/40">N° {num}</span>
+            <span>{article.source}</span>
+          </div>
+          <span className="inline-flex items-center border border-ink px-1.5 py-[1px] font-display font-black text-[12px] tabular-nums leading-none text-ink">
+            {sign}
+            {Math.abs(score).toFixed(2)}
+          </span>
+        </header>
 
-      <p className="mt-2 font-serif italic text-[14px] leading-snug text-ink/70 line-clamp-3 md:text-[15px]">
-        {article.snippet}
-      </p>
+        <h3 className="mt-3 font-serif text-[20px] leading-[1.2] text-ink group-hover:text-accent transition-colors md:text-[22px]">
+          {article.title}
+        </h3>
 
-      <footer className="mt-3 flex items-center justify-between font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+        <p className="mt-2 font-serif italic text-[14px] leading-snug text-ink/70 line-clamp-3 md:text-[15px]">
+          {article.snippet}
+        </p>
+      </div>
+
+      <footer className="relative z-[2] mt-3 flex items-center justify-between font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
         <span>{article.method}</span>
         <div className="flex items-center gap-4">
           <Link
@@ -198,20 +219,21 @@ function Clipping({
           >
             Analyze &rarr;
           </Link>
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelect()
+            }}
             className="underline decoration-ink/30 underline-offset-4 hover:decoration-ink hover:text-ink"
           >
-            Original ↗
-          </a>
+            {isSelected ? 'Hide reasoning' : 'Why?'}
+          </button>
         </div>
       </footer>
 
       {isSelected && article.reasoning && (
-        <div className="mt-3 border-l-[3px] border-ink pl-4 font-serif text-[13px] leading-relaxed text-ink/85">
+        <div className="relative z-[2] mt-3 border-l-[3px] border-ink pl-4 font-serif text-[13px] leading-relaxed text-ink/85">
           <span className="block font-sans text-[9px] uppercase tracking-[0.22em] text-ink/55 mb-1">
             Network reasoning
           </span>

@@ -6,6 +6,7 @@ export type ArticleMarker = {
   title: string
   why?: string
   score?: number
+  url?: string
 }
 
 export const SAMPLE_ARTICLES: ArticleMarker[] = [
