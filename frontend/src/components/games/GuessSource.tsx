@@ -79,24 +79,20 @@ export default function GuessSource() {
     return shuffle([currentArticle.source, ...distractors])
   }, [currentArticle])
 
-  // Pick at most ONE article per outlet per session so each round shows a
-  // different masthead. Without this the pool is dominated by whichever
-  // outlets the search returned most heavily.
-  const dedupeBySource = (arts: Article[]): Article[] => {
-    const seen = new Set<string>()
-    const out: Article[] = []
-    for (const a of arts) {
-      const key = a.source.toLowerCase()
-      if (seen.has(key)) continue
-      seen.add(key)
-      out.push(a)
-    }
-    return out
-  }
-
+  // Pool building: dedupe by ARTICLE id only (no two rounds show the same
+  // clipping), but allow the same OUTLET to repeat across rounds. Each round's
+  // 4-choice picker independently shuffles in 3 distractor outlets so the
+  // player still gets 4 unique sources to choose from per round.
   const fetchPool = async (topic: string): Promise<Article[]> => {
     const collected: Article[] = []
     const seenIds = new Set<string>()
+    const safeAdd = (a: Article) => {
+      if (!a || !a.id || seenIds.has(a.id)) return
+      if (!a.source) return
+      if (!PLAUSIBLE_OUTLETS.some((o) => o.toLowerCase() === a.source.toLowerCase())) return
+      seenIds.add(a.id)
+      collected.push(a)
+    }
     // Lead with the chosen topic; fall through to seeds for variety.
     const queries = topic
       ? [topic, ...SEED_QUERIES.filter((q) => q !== topic)]
@@ -104,37 +100,19 @@ export default function GuessSource() {
     for (const q of queries) {
       try {
         const data = await searchArticles(q)
-        for (const a of data.articles) {
-          if (!a.source) continue
-          if (seenIds.has(a.id)) continue
-          if (PLAUSIBLE_OUTLETS.some((o) => o.toLowerCase() === a.source.toLowerCase())) {
-            seenIds.add(a.id)
-            collected.push(a)
-          }
-        }
-        // Stop early if we have enough unique-outlet candidates.
-        if (dedupeBySource(collected).length >= TOTAL_ROUNDS) break
+        for (const a of data.articles ?? []) safeAdd(a)
+        if (collected.length >= TOTAL_ROUNDS) break
       } catch {
         /* try next */
       }
     }
-    let unique = dedupeBySource(collected)
-    if (unique.length >= TOTAL_ROUNDS) {
-      return shuffle(unique).slice(0, TOTAL_ROUNDS)
-    }
-    // Top up from fallback corpus, still enforcing one-per-outlet.
-    for (const q of SEED_QUERIES) {
-      for (const a of fallbackSearch(q)) {
-        if (seenIds.has(a.id)) continue
-        if (PLAUSIBLE_OUTLETS.some((o) => o.toLowerCase() === a.source.toLowerCase())) {
-          seenIds.add(a.id)
-          collected.push(a)
-        }
-        if (dedupeBySource(collected).length >= TOTAL_ROUNDS) break
+    if (collected.length < TOTAL_ROUNDS) {
+      for (const q of SEED_QUERIES) {
+        for (const a of fallbackSearch(q)) safeAdd(a)
+        if (collected.length >= TOTAL_ROUNDS) break
       }
-      if (collected.length >= TOTAL_ROUNDS) break
     }
-    return shuffle(dedupeBySource(collected)).slice(0, TOTAL_ROUNDS)
+    return shuffle(collected).slice(0, TOTAL_ROUNDS)
   }
 
   const startGame = async (topic: string) => {
@@ -343,12 +321,34 @@ export default function GuessSource() {
                 <h2 className="mt-3 font-serif text-3xl md:text-4xl font-semibold leading-tight text-ink">
                   {currentArticle.title}
                 </h2>
-                {/* Lede + body excerpt — give the player real material to read,
-                    not just the headline. */}
-                <p className="mt-5 font-serif text-[17px] md:text-[19px] text-ink/85 leading-[1.7] first-letter:font-display first-letter:font-black first-letter:text-[58px] first-letter:leading-[0.85] first-letter:float-left first-letter:mr-2 first-letter:mt-1">
-                  {currentArticle.snippet}
-                </p>
-                <p className="mt-2 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/45">
+                {/* Use body excerpt when available — gives the player 2-3
+                    paragraphs of real article text to base their guess on
+                    instead of a single sentence. Falls back to snippet for
+                    articles where the backend couldn't extract a body. */}
+                {(() => {
+                  const hasBody = currentArticle.body && currentArticle.body.trim().length > 200
+                  const text = hasBody ? currentArticle.body! : currentArticle.snippet
+                  // Split body into paragraphs for display (the body is joined
+                  // with double newlines from the BeautifulSoup extraction).
+                  const paragraphs = text.split(/\n{2,}/).filter((p) => p.trim().length > 0)
+                  return (
+                    <div className="mt-5 space-y-4">
+                      {paragraphs.map((p, idx) => (
+                        <p
+                          key={idx}
+                          className={`font-serif text-[17px] md:text-[19px] text-ink/85 leading-[1.7] ${
+                            idx === 0
+                              ? 'first-letter:font-display first-letter:font-black first-letter:text-[58px] first-letter:leading-[0.85] first-letter:float-left first-letter:mr-2 first-letter:mt-1'
+                              : ''
+                          }`}
+                        >
+                          {p}
+                        </p>
+                      ))}
+                    </div>
+                  )
+                })()}
+                <p className="mt-4 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/45">
                   Read the full text · then call the desk
                 </p>
               </article>

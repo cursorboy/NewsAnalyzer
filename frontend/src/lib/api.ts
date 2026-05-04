@@ -7,8 +7,12 @@ export type Article = {
   published_at?: string | null
   spectrum_score: number
   confidence: number
-  method: 'outlet' | 'ai' | 'unknown'
+  method: 'outlet' | 'ai' | 'unknown' | 'ai+prior'
   reasoning?: string | null
+  // Long-form excerpt of the fetched article body (lede + a few paragraphs),
+  // capped at ~2400 chars by the backend. Used for richer in-game display
+  // (Guess the Source clipping, Detective context, Article Detail body).
+  body?: string | null
 }
 
 export type SearchResponse = {

@@ -365,7 +365,9 @@ class handler(BaseHTTPRequestHandler):
             if settings.openai_api_key:
                 print(f"Debug: OpenAI API key starts with: {settings.openai_api_key[:10]}...")
 
-            search_results = await search_news(query, num=12)
+            # Brave news caps at 20 per call. Fetch the max so the spectrum has
+            # enough outlet variety even after frontend per-source dedup.
+            search_results = await search_news(query, num=20)
             print(f"Debug: Got {len(search_results)} search results")
 
             article_data = []
@@ -386,7 +388,8 @@ class handler(BaseHTTPRequestHandler):
             # ── Stage 1: parallel-fetch every article body ────────────────────
             # _fetch_url is sync (httpx.Client + BeautifulSoup); wrap each in
             # to_thread and gather. Semaphore caps concurrent outbound requests.
-            fetch_sem = asyncio.Semaphore(10)
+            # Bumped to 15 since we now fetch up to 20 articles per search.
+            fetch_sem = asyncio.Semaphore(15)
 
             async def fetch_one(url: str) -> tuple[str, str]:
                 async with fetch_sem:
@@ -405,19 +408,26 @@ class handler(BaseHTTPRequestHandler):
             )
 
             # Use lede + first 3 paragraphs only — bias signal lives in the opening.
-            # Hard cap at 1500 chars (~375 tokens) keeps LLM input focused on framing
-            # rather than mid-article factual content that dilutes the score.
+            # Hard cap at 1500 chars for the LLM input (~375 tokens) so framing
+            # isn't diluted by mid-article factual content.
             BODY_CAP = 1500
             BODY_MIN = 200  # less than this → not worth using, fall back to snippet
+            # Larger cap for the body excerpt sent to the frontend — gives the
+            # spectrum + games (especially Guess the Source) enough material
+            # for the user to actually read a real chunk of the article.
+            DISPLAY_BODY_CAP = 2400
             classify_inputs = []
             for art, (fetched_title, fetched_body) in zip(article_data, fetched):
                 body = (fetched_body or "").strip()
                 if len(body) < BODY_MIN:
                     text_for_classifier = art["snippet"]
                     art["_body_used"] = False
+                    art["body"] = ""
                 else:
                     text_for_classifier = body[:BODY_CAP]
                     art["_body_used"] = True
+                    # Stash a longer excerpt for the frontend to display.
+                    art["body"] = body[:DISPLAY_BODY_CAP]
                 classify_inputs.append((art["title"], text_for_classifier, art["source"]))
 
             body_count = sum(1 for a in article_data if a.get("_body_used"))
@@ -427,7 +437,8 @@ class handler(BaseHTTPRequestHandler):
             # ── Stage 2: parallel-classify ────────────────────────────────────
             classification_tasks = [classify_hybrid(t, s, src) for (t, s, src) in classify_inputs]
             print(f"Debug: Starting parallel classification of {len(classification_tasks)} articles")
-            semaphore = asyncio.Semaphore(5)
+            # Bumped to 8 to match larger article batch.
+            semaphore = asyncio.Semaphore(8)
 
             async def classify_with_limit(task):
                 async with semaphore:

@@ -85,18 +85,19 @@ export interface InferenceArtifacts {
   tokenStrings: string[]
   inputIds: number[]
   attentionMask: number[]
-  // [layers + 1, seq, hidden] — shape preserved as nested arrays for inspection
-  hiddenStateShapes: [number, number, number][]
-  hiddenStateClsHead: number[][] // first 8 dims of [CLS] at each layer
-  // attentions[layer][head][q][k]
-  attentions: number[][][][]
-  pooledCls: number[] // 768-dim
   logits: number[]
   probs: number[]
   argmax: number
   argmaxLabel: string
-  forwardMs: number
-  rollout: number[] // per-token saliency from [CLS], length = seq
+  forwardMs: number // single forward pass time
+  totalMs: number // forward + occlusion sweep
+  occlusionRuns: number
+  // per-token absolute change in p(argmax) when that token is masked.
+  // length = tokenStrings.length. Special tokens get 0.
+  occlusionScores: number[]
+  // per-token logits delta (signed) for the argmax class
+  occlusionDeltas: number[]
+  maskTokenId: number | null
 }
 
 // ---------- helpers ----------
@@ -327,107 +328,68 @@ function softmax(arr: number[]): number[] {
   return exps.map((x) => x / s)
 }
 
-// Attention rollout (Abnar & Zuidema, 2020): multiply per-layer attention
-// matrices (head-averaged + identity, re-normalized) across all layers.
-// Returns the [CLS] row of the resulting matrix — saliency over input tokens.
-function attentionRollout(attentions: number[][][][]): number[] {
-  const numLayers = attentions.length
-  if (numLayers === 0) return []
-  const seqLen = attentions[0][0].length
-
-  // start with identity
-  let rolled: number[][] = Array.from({ length: seqLen }, (_, i) =>
-    Array.from({ length: seqLen }, (_, j) => (i === j ? 1 : 0)),
-  )
-
-  for (let l = 0; l < numLayers; l++) {
-    const heads = attentions[l]
-    const numHeads = heads.length
-    // head-average
-    const avg: number[][] = Array.from({ length: seqLen }, () => new Array(seqLen).fill(0))
-    for (let h = 0; h < numHeads; h++) {
-      for (let i = 0; i < seqLen; i++) {
-        for (let j = 0; j < seqLen; j++) {
-          avg[i][j] += heads[h][i][j] / numHeads
-        }
-      }
-    }
-    // add identity, re-normalize each row so it sums to 1
-    for (let i = 0; i < seqLen; i++) {
-      avg[i][i] += 1
-      const s = avg[i].reduce((a, b) => a + b, 0)
-      if (s > 0) for (let j = 0; j < seqLen; j++) avg[i][j] /= s
-    }
-    // rolled = avg @ rolled
-    const next: number[][] = Array.from({ length: seqLen }, () => new Array(seqLen).fill(0))
-    for (let i = 0; i < seqLen; i++) {
-      for (let j = 0; j < seqLen; j++) {
-        let acc = 0
-        for (let k = 0; k < seqLen; k++) acc += avg[i][k] * rolled[k][j]
-        next[i][j] = acc
-      }
-    }
-    rolled = next
-  }
-  return rolled[0] // [CLS] row
+type ModelOutput = {
+  logits: { data: ArrayLike<number>; dims: number[] }
 }
 
-function tensorToNDArray(t: { data: ArrayLike<number>; dims: number[] }): unknown {
-  const flat = Array.from(t.data as ArrayLike<number>) as number[]
-  const dims = t.dims
-  // recursive reshape
-  const build = (offset: number, dimIdx: number): { val: unknown; consumed: number } => {
-    if (dimIdx === dims.length - 1) {
-      const len = dims[dimIdx]
-      return { val: flat.slice(offset, offset + len), consumed: len }
-    }
-    const len = dims[dimIdx]
-    const out: unknown[] = []
-    let used = 0
-    for (let i = 0; i < len; i++) {
-      const r = build(offset + used, dimIdx + 1)
-      out.push(r.val)
-      used += r.consumed
-    }
-    return { val: out, consumed: used }
+type ModelCallable = (enc: unknown) => Promise<ModelOutput>
+
+type EncoderInput = {
+  input_ids: { data: ArrayLike<number | bigint>; dims: number[] }
+  attention_mask: { data: ArrayLike<number | bigint>; dims: number[] }
+  token_type_ids?: { data: ArrayLike<number | bigint>; dims: number[] }
+}
+
+const SPECIAL_TOKEN_LITERALS = new Set(['[CLS]', '[SEP]', '[PAD]', '[UNK]'])
+
+function bigToNum(v: number | bigint): number {
+  return typeof v === 'bigint' ? Number(v) : v
+}
+
+function arrToNumber(a: ArrayLike<number | bigint>): number[] {
+  const out: number[] = []
+  for (let i = 0; i < a.length; i++) out.push(bigToNum(a[i]))
+  return out
+}
+
+async function runOnce(
+  model: ModelCallable,
+  encoded: EncoderInput,
+): Promise<number[]> {
+  const out = await model(encoded)
+  return Array.from(out.logits.data as ArrayLike<number>) as number[]
+}
+
+function makeEncodedWithIds(
+  template: EncoderInput,
+  newIds: number[],
+): EncoderInput {
+  const useBigInt = template.input_ids.data.length > 0 && typeof template.input_ids.data[0] === 'bigint'
+  const data: ArrayLike<number | bigint> = useBigInt
+    ? (BigInt64Array.from(newIds.map((n) => BigInt(n))) as unknown as ArrayLike<bigint>)
+    : (Int32Array.from(newIds) as unknown as ArrayLike<number>)
+  return {
+    ...template,
+    input_ids: { data, dims: [...template.input_ids.dims] },
   }
-  return build(0, 0).val
 }
 
 export async function runForwardPass(text: string): Promise<InferenceArtifacts> {
   if (!_loaded) throw new Error('Model not loaded yet — call loadModel() first.')
-  const { tokenizer, model, config } = _loaded
+  const { tokenizer, model, config, tokenizerInfo } = _loaded
 
-  const tk = tokenizer as (text: string) => {
-    input_ids: { data: ArrayLike<number | bigint>; dims: number[] }
-    attention_mask: { data: ArrayLike<number | bigint>; dims: number[] }
-  }
-  const enc2 = tk(text)
+  const tk = tokenizer as (text: string) => EncoderInput
+  const encoded = tk(text)
+
+  const callable = model as unknown as ModelCallable
 
   const t0 = performance.now()
-  const out = await (model as {
-    (
-      enc: unknown,
-      opts: { output_hidden_states: boolean; output_attentions: boolean },
-    ): Promise<{
-      logits: { data: ArrayLike<number>; dims: number[] }
-      hidden_states?: { data: ArrayLike<number>; dims: number[] }[]
-      attentions?: { data: ArrayLike<number>; dims: number[] }[]
-    }>
-  })(enc2, { output_hidden_states: true, output_attentions: true })
+  const baseLogits = await runOnce(callable, encoded)
   const forwardMs = performance.now() - t0
 
-  // --- ids / tokens
-  const idsArr: number[] = []
-  for (let i = 0; i < enc2.input_ids.data.length; i++) {
-    const v = enc2.input_ids.data[i]
-    idsArr.push(typeof v === 'bigint' ? Number(v) : (v as number))
-  }
-  const maskArr: number[] = []
-  for (let i = 0; i < enc2.attention_mask.data.length; i++) {
-    const v = enc2.attention_mask.data[i]
-    maskArr.push(typeof v === 'bigint' ? Number(v) : (v as number))
-  }
+  // ids / tokens
+  const idsArr = arrToNumber(encoded.input_ids.data)
+  const maskArr = arrToNumber(encoded.attention_mask.data)
 
   const convert = (tokenizer as {
     model: { convert_ids_to_tokens: (ids: number[]) => string[] }
@@ -437,47 +399,37 @@ export async function runForwardPass(text: string): Promise<InferenceArtifacts> 
     idsArr,
   )
 
-  // --- hidden states
-  const hidden = out.hidden_states ?? []
-  const hiddenStateShapes: [number, number, number][] = hidden.map(
-    (h) => [h.dims[0], h.dims[1], h.dims[2]] as [number, number, number],
-  )
-  const hiddenStateClsHead: number[][] = hidden.map((h) => {
-    // [CLS] is index 0 in the seq dim
-    const hiddenDim = h.dims[2]
-    const data = h.data as ArrayLike<number>
-    // start of [CLS] in batch 0 = 0 * seq * hidden + 0 * hidden = 0
-    const slice: number[] = []
-    for (let i = 0; i < Math.min(8, hiddenDim); i++) slice.push(Number(data[i]))
-    return slice
-  })
-
-  // pooled [CLS] from final hidden layer
-  let pooledCls: number[] = []
-  if (hidden.length > 0) {
-    const last = hidden[hidden.length - 1]
-    const hiddenDim = last.dims[2]
-    const data = last.data as ArrayLike<number>
-    for (let i = 0; i < hiddenDim; i++) pooledCls.push(Number(data[i]))
-  } else {
-    pooledCls = new Array(config.hiddenDim).fill(0)
-  }
-
-  // --- attentions: [layer]{ dims: [1, heads, seq, seq], data }
-  const attns = out.attentions ?? []
-  const attentions: number[][][][] = attns.map((a) => {
-    const reshaped = tensorToNDArray(a) as number[][][][] // [batch, head, q, k]
-    return reshaped[0]
-  })
-
-  // --- logits / probs
-  const logits = Array.from(out.logits.data as ArrayLike<number>) as number[]
-  const probs = softmax(logits)
+  const probs = softmax(baseLogits)
   let argmax = 0
   for (let i = 1; i < probs.length; i++) if (probs[i] > probs[argmax]) argmax = i
   const argmaxLabel = config.id2label[argmax] ?? `class_${argmax}`
+  const baseProb = probs[argmax]
 
-  const rollout = attentionRollout(attentions)
+  // Occlusion saliency: for each non-special token, replace with [MASK] (or
+  // [UNK] if [MASK] is not in the tokenizer) and re-run. The drop in
+  // p(argmax) is that token's importance.
+  const maskId = tokenizerInfo.maskId ?? tokenizerInfo.unkId ?? tokenizerInfo.padId
+  const occlusionScores: number[] = new Array(idsArr.length).fill(0)
+  const occlusionDeltas: number[] = new Array(idsArr.length).fill(0)
+  let runs = 0
+
+  for (let i = 0; i < idsArr.length; i++) {
+    const tok = tokenStrings[i]
+    if (SPECIAL_TOKEN_LITERALS.has(tok)) continue
+    if (maskArr[i] === 0) continue
+
+    const variant = idsArr.slice()
+    variant[i] = maskId
+    const variantEncoded = makeEncodedWithIds(encoded, variant)
+    const variantLogits = await runOnce(callable, variantEncoded)
+    const variantProbs = softmax(variantLogits)
+    const variantP = variantProbs[argmax]
+    occlusionScores[i] = Math.max(0, baseProb - variantP) + Math.max(0, variantP - baseProb) * 0.25
+    occlusionDeltas[i] = baseLogits[argmax] - variantLogits[argmax]
+    runs++
+  }
+
+  const totalMs = performance.now() - t0
 
   return {
     inputText: text,
@@ -485,15 +437,15 @@ export async function runForwardPass(text: string): Promise<InferenceArtifacts> 
     tokenStrings,
     inputIds: idsArr,
     attentionMask: maskArr,
-    hiddenStateShapes,
-    hiddenStateClsHead,
-    attentions,
-    pooledCls,
-    logits,
+    logits: baseLogits,
     probs,
     argmax,
     argmaxLabel,
     forwardMs,
-    rollout,
+    totalMs,
+    occlusionRuns: runs,
+    occlusionScores,
+    occlusionDeltas,
+    maskTokenId: maskId,
   }
 }
