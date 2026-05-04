@@ -9,7 +9,6 @@ type Props = {
 const STAGES = [
   { label: 'Tokenizing input', duration: 700 },
   { label: 'Embedding article in comparison-bias space', duration: 950 },
-  { label: 'Cross-referencing 10,000-hour training corpus', duration: 1200 },
   { label: 'Computing bias vector across 8 dimensions', duration: 950 },
   { label: 'Surfacing loaded phrases & linguistic signals', duration: 800 },
 ] as const

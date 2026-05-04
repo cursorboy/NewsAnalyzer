@@ -23,7 +23,6 @@ const SEED_QUERIES = ['us politics', 'climate change', 'immigration', 'economy',
 const FAUX_PROGRESS = [
   'Comparing against 1.2M paired headlines…',
   'Computing tone delta…',
-  'Cross-referencing 10,000h corpus…',
   'Scanning for loaded language…',
   'Measuring entailment to original…',
   'Weighting hedging signals…',

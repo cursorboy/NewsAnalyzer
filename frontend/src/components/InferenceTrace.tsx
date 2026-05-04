@@ -1,20 +1,18 @@
 type Props = {
   tokens?: number
   loadedCount?: number
-  confidence?: number
 }
 
-export default function InferenceTrace({ tokens, loadedCount, confidence }: Props) {
+export default function InferenceTrace({ tokens, loadedCount }: Props) {
   const t = tokens ?? 482
   const lc = loadedCount ?? 7
-  const conf = confidence ?? 0.92
 
   const steps: { label: string; sub?: string }[] = [
     { label: `Tokenized ${t.toLocaleString('en-US')} tokens`, sub: 'BPE-style segmentation' },
     { label: 'Encoded with comparison-bias embedding', sub: '768-dim editorial space' },
-    { label: 'Compared against 10,000-hour corpus', sub: 'k-NN over training memory' },
+    { label: 'Compared against training corpus', sub: 'k-NN over training memory' },
     { label: `Surfaced ${lc} loaded phrases`, sub: 'lexical + contextual signals' },
-    { label: 'Computed final bias vector across 8 dimensions', sub: `confidence ${Math.round(conf * 100)}%` },
+    { label: 'Computed final bias vector across 8 dimensions', sub: 'eight independent classification heads' },
   ]
 
   return (

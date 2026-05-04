@@ -140,36 +140,85 @@ def extract_domain(url: str) -> Optional[str]:
 
 
 SYSTEM_PROMPT = (
-    "You are an expert media analyst specializing in detecting political "
-    "bias in news articles. Provide objective, detailed analysis."
+    "You are a forensic media analyst trained to detect political slant in US news writing. "
+    "You score articles aggressively and decisively. You do NOT default to neutral when uncertain — "
+    "every piece of US political journalism leans somewhere, and your job is to find where. "
+    "Reuters and the AP are your nearest reference points for genuine 0.0 neutrality; "
+    "almost everything else has detectable directional framing. "
+    "You weigh word-level cues (loaded verbs, partisan adjectives), framing of policy "
+    "(who is the actor, who is the victim, what is normalized vs. what is contested), "
+    "source selection (which experts are quoted, which voices are dismissed or excluded), "
+    "and what a comparable article from the opposite-leaning outlet would say differently."
 )
 
 
-def _build_prompt(title: str, snippet: str, source: str) -> str:
+_FEW_SHOT = """
+Calibration anchors (use these as scoring references):
+
+  -1.0 — Jacobin, Socialist Worker, WSWS (revolutionary-left framing, capitalism is the enemy)
+  -0.8 — The Intercept, Salon, Daily Beast, Mother Jones (clearly progressive, partisan-left framing)
+  -0.7 — MSNBC, HuffPost, Vox, Slate (consistent left framing on most political stories)
+  -0.5 — CNN, NYT, Washington Post, Guardian (mainstream-left bias: word choice favors progressive
+          framing, sources skew left, conservative positions are described rather than steelmanned)
+  -0.3 — Atlantic, New Yorker, NPR (sophisticated-left framing, more measured but still directional)
+   0.0 — Reuters, AP, BBC (true wire-service neutrality, dry factual reporting, balanced sourcing)
+  +0.3 — Economist, Forbes (center-right but globalist/business-leaning)
+  +0.5 — WSJ news pages, NY Post, Washington Examiner (clearly right-leaning framing)
+  +0.7 — Fox News, National Review, Daily Caller (consistent right framing on most stories)
+  +0.8 — Daily Wire, The Blaze, Townhall (clearly partisan-right framing)
+  +1.0 — Breitbart, OAN, Newsmax, Gateway Pundit (revolutionary-right framing)
+
+Concrete cues that push the score toward a side:
+
+LEFT-leaning cues:
+- Verbs framing conservative action negatively: "slammed", "blasted", "ignored", "downplayed"
+- Adjectives framing conservative policy as harmful: "harsh", "draconian", "cruel", "extreme"
+- Centering of marginalized identities and equity language
+- Quoting progressive policy advocates as default expert voices
+- Framing GOP positions as "controversial" while DEM equivalents are "ambitious"
+- Climate/healthcare/immigration framed in progressive activist terms
+
+RIGHT-leaning cues:
+- Verbs framing progressive action negatively: "imposed", "rammed through", "lectured"
+- Adjectives framing progressive policy as harmful: "radical", "woke", "reckless", "extreme"
+- Centering of family/faith/sovereignty language
+- Quoting business and conservative think-tank voices as default experts
+- Framing DEM positions as "controversial" while GOP equivalents are "principled"
+- Crime/immigration/economy framed in conservative framing terms
+
+Be decisive. A score of 0.0 is reserved for ACTUAL wire-service neutrality. If the article shows
+ANY of the cues above, score accordingly — do not hedge to 0.1 or -0.1.
+"""
+
+
+def _build_prompt(title: str, snippet: str, source: str, prior: float | None = None) -> str:
+    prior_block = ""
+    if prior is not None:
+        direction = "left" if prior < 0 else "right" if prior > 0 else "center"
+        prior_block = (
+            f"\nOutlet prior: {source} has a known editorial baseline near {prior:+.1f} "
+            f"({direction}). Use this as a starting anchor, but adjust UP or DOWN based on the "
+            f"specific framing of THIS article. An especially sober AP-style piece from a "
+            f"left-leaning outlet might score 0.3 closer to center; an especially heated piece "
+            f"might score 0.2 further out.\n"
+        )
+
     return f"""
-Analyze this news article for political bias on a scale from -1.0 (far left) to +1.0 (far right), where 0.0 is perfectly neutral.
+Score this article for US political bias on -1.0 (far left) to +1.0 (far right). 0.0 is reserved for true wire-service neutrality (AP/Reuters style). Most articles are NOT 0.0.
 
-Article Title: {title}
-Article Snippet: {snippet}
-Source: {source}
+ARTICLE TITLE: {title}
+ARTICLE SNIPPET: {snippet}
+SOURCE: {source}
+{prior_block}
+{_FEW_SHOT}
 
-Please provide:
-1. A bias score between -1.0 and +1.0
-2. Your confidence level (0.0 to 1.0)
-3. Detailed reasoning explaining why you assigned this score
-
-Consider these factors:
-- Language choices (emotional vs. neutral)
-- Framing of issues
-- Selection of facts presented
-- Implicit assumptions
-- Source credibility patterns
+Now score this article. In your reasoning, cite at least TWO specific words, phrases, or framing choices from the title or snippet that pushed the score in the direction you chose. Be specific.
 
 Respond in this exact JSON format:
 {{
     "bias_score": <float between -1.0 and 1.0>,
     "confidence": <float between 0.0 and 1.0>,
-    "reasoning": "<detailed explanation of your analysis>"
+    "reasoning": "<2-4 sentences citing specific words/framings from the article>"
 }}
 """
 
@@ -181,17 +230,27 @@ def _classify_with_ai_sync(title: str, snippet: str, source: str) -> Classificat
         print(f"Debug: provider unavailable, falling back to outlet: {e}")
         return classify_by_outlet(f"https://{source}")
 
+    domain = extract_domain(f"https://{source}") or source.lower()
+    prior = OUTLET_BIAS.get(domain)
+
     try:
         content = provider.complete(
             system=SYSTEM_PROMPT,
-            user=_build_prompt(title, snippet, source),
+            user=_build_prompt(title, snippet, source, prior=prior),
             response_format={"type": "json_object"},
         )
         analysis = json.loads(content)
+        score = float(analysis["bias_score"])
+
+        # If we have an outlet prior, blend it with the LLM result so the model
+        # cannot wash a known-leaning outlet to neutral on a single soft article.
+        if prior is not None:
+            score = 0.6 * prior + 0.4 * score
+
         return Classification(
-            score=float(analysis["bias_score"]),
+            score=max(-1.0, min(1.0, score)),
             confidence=float(analysis["confidence"]),
-            method="ai",
+            method="ai" if prior is None else "ai+prior",
             reasoning=analysis.get("reasoning"),
         )
     except Exception as e:

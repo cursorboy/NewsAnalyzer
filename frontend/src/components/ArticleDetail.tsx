@@ -141,8 +141,6 @@ export default function ArticleDetail() {
                 bias {a.spectrum_score > 0 ? '+' : a.spectrum_score < 0 ? '−' : ''}
                 {Math.abs(a.spectrum_score).toFixed(2)}
               </span>
-              <span aria-hidden className="text-ink/30">·</span>
-              <span>{Math.round(a.confidence * 100)}% confidence</span>
               <a
                 href={a.url}
                 target="_blank"
@@ -212,7 +210,6 @@ export default function ArticleDetail() {
               <InferenceReceipt
                 tokens={tokens}
                 inferenceMs={843}
-                confidence={a.confidence}
               />
             </div>
           </article>
@@ -229,7 +226,6 @@ export default function ArticleDetail() {
             <InferenceTrace
               tokens={tokens}
               loadedCount={loadedPhrases.length}
-              confidence={a.confidence}
             />
 
             <BiasRadarPanel data={radarData} placeholder={placeholder} />

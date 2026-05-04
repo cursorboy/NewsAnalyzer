@@ -9,7 +9,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from app.services.google import search_news, get_api_status
-from app.services.classifier import classify_with_ai, classify_by_outlet, extract_domain
+from app.services.classifier import classify_with_ai, classify_by_outlet, classify_hybrid, extract_domain
 from app.services.linguistic import (
     detect_loaded_language,
     compute_source_diversity,
@@ -330,7 +330,9 @@ class handler(BaseHTTPRequestHandler):
                     "published_at": result.get('published_at'),
                 })
 
-                classification_tasks.append(classify_with_ai(title, snippet, source))
+                # Use hybrid: known outlets get OUTLET_BIAS lookup (CNN -> -0.5, Fox -> +0.7),
+                # unknown outlets fall through to AI which itself blends in any prior.
+                classification_tasks.append(classify_hybrid(title, snippet, source))
 
             print(f"Debug: Starting parallel classification of {len(classification_tasks)} articles")
             semaphore = asyncio.Semaphore(5)

@@ -189,7 +189,7 @@ function Clipping({
       </p>
 
       <footer className="mt-3 flex items-center justify-between font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
-        <span>{article.method} · {Math.round(article.confidence * 100)}% conf.</span>
+        <span>{article.method}</span>
         <div className="flex items-center gap-4">
           <Link
             to={`/article/${article.id}`}

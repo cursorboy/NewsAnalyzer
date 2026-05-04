@@ -119,9 +119,7 @@ function ColumnItem({ article, index }: { article: Article; index: number }) {
       </p>
 
       <div className="mt-3 flex items-baseline justify-between font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
-        <span>
-          {article.method} &middot; {Math.round(article.confidence * 100)}% conf.
-        </span>
+        <span>{article.method}</span>
         <a
           href={article.url}
           target="_blank"

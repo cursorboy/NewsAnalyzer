@@ -3,24 +3,21 @@ import { MODEL } from '../lib/modelInfo'
 type Props = {
   tokens?: number
   inferenceMs?: number
-  confidence?: number
 }
 
 function formatNumber(n: number): string {
   return n.toLocaleString('en-US')
 }
 
-export default function InferenceReceipt({ tokens, inferenceMs, confidence }: Props) {
+export default function InferenceReceipt({ tokens, inferenceMs }: Props) {
   const t = tokens ?? 482
   const ms = inferenceMs ?? 843
-  const conf = confidence ?? 0.92
 
   const rows: { label: string; value: string }[] = [
     { label: 'Model', value: MODEL.name },
     { label: 'Version', value: MODEL.version },
     { label: 'Tokens processed', value: formatNumber(t) },
     { label: 'Inference time', value: `${ms}ms` },
-    { label: 'Confidence', value: `${Math.round(conf * 100)}%` },
     { label: 'Trained on', value: MODEL.shortTagline },
   ]
 
