@@ -10,8 +10,6 @@ import EvalTable from '../components/diagrams/EvalTable'
 import AttentionRolloutFigure from '../components/diagrams/AttentionRolloutFigure'
 import { MODEL } from '../lib/modelInfo'
 
-const REPO_URL = 'https://github.com/yourname/biasgraph'
-
 type Section = { id: string; numeral: string; title: string }
 
 const SECTIONS: Section[] = [
@@ -23,8 +21,7 @@ const SECTIONS: Section[] = [
   { id: 'sec-6', numeral: 'VI', title: 'Training' },
   { id: 'sec-7', numeral: 'VII', title: 'Evaluation' },
   { id: 'sec-8', numeral: 'VIII', title: 'Production' },
-  { id: 'sec-9', numeral: 'IX', title: 'Open' },
-  { id: 'sec-10', numeral: 'X', title: 'Refs' },
+  { id: 'sec-9', numeral: 'IX', title: 'Refs' },
 ]
 
 function Cite({ n }: { n: number }) {
@@ -705,7 +702,7 @@ export default function HowIBuiltThis() {
                   HF Transformers 4.38, PyTorch 2.2 / CUDA 12.1, Lightning, DeepSpeed
                   ZeRO-2, FlashAttention-2, bf16. Activation checkpointing on every
                   3rd encoder layer (max_seq_len 1024 triplets otherwise OOM at batch 8).
-                  11 ablation runs in total before settling on v3, rented on Lambda
+                  7 ablation runs in total before settling on v2, rented on Lambda
                   Labs spot at ~$1.30/hr per A100.
                 </p>
               </Prose>
@@ -734,7 +731,7 @@ export default function HowIBuiltThis() {
                 </div>
                 <div className="divide-y divide-ink/10 font-mono text-[12px]">
                   {[
-                    ['Full v3 (sup + cmp + adv + EMA)', '94.6%', '+0.0'],
+                    ['Full v2 (sup + cmp + adv + EMA)', '94.6%', '+0.0'],
                     ['no comparison loss', '88.2%', '-6.4'],
                     ['no adversarial branch', '91.7%', '-2.9'],
                     ['no EMA / SWA', '93.8%', '-0.8'],
@@ -832,87 +829,31 @@ export default function HowIBuiltThis() {
                   ledger of every inference (URL hash, scores, timestamp, model
                   version), a weekly offline rerun of the held-out eval set against
                   the live endpoint, and an A/B harness that splits traffic 90/10
-                  between v3 and any candidate during shadow validation.
+                  between v2 and any candidate during shadow validation.
                 </p>
               </Prose>
             </div>
           </div>
         </Section>
 
-        {/* § IX Open */}
+        {/* § IX References */}
         <Section>
-          <SectionHeader id="sec-9" numeral="IX" title="Open" />
-          <H2>What's next.</H2>
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="border border-ink/20 bg-paper p-5">
-              <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-accent">
-                Multilingual
-              </div>
-              <p className="mt-3 font-serif text-[15px] leading-[1.65] text-ink/85">
-                French, Spanish, German, Hindi. mDeBERTa or XLM-R as the encoder.
-                Translate-and-cluster for cross-lingual cluster construction. The
-                labeling protocol has to be redone per language.
-              </p>
-            </div>
-            <div className="border border-ink/20 bg-paper p-5">
-              <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-accent">
-                Long documents
-              </div>
-              <p className="mt-3 font-serif text-[15px] leading-[1.65] text-ink/85">
-                max_seq_len 1024 truncates investigative pieces. Hierarchical chunking +
-                a small transformer over chunk-level [CLS] vectors. Pilot at 92.8% on a
-                1,400-article longform set. Not shipped.
-              </p>
-            </div>
-            <div className="border border-ink/20 bg-paper p-5">
-              <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-accent">
-                Calibration drift
-              </div>
-              <p className="mt-3 font-serif text-[15px] leading-[1.65] text-ink/85">
-                The sensationalism head has drifted +0.02 over four months,
-                statistically significant. Likely the news cycle itself. Fix:
-                quarterly re-eval against a fresh human-labeled gold set.
-              </p>
-            </div>
-            <div className="border border-ink/20 bg-paper p-5">
-              <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-accent">
-                Multimodal v3
-              </div>
-              <p className="mt-3 font-serif text-[15px] leading-[1.65] text-ink/85">
-                Production model is text-only. v3 adds image (thumbnail + lede), video
-                stills (broadcast), and audio prosody. Research plan + cost model done.
-                No training run yet.
-              </p>
-            </div>
-          </div>
-        </Section>
-
-        {/* § X References */}
-        <Section>
-          <SectionHeader id="sec-10" numeral="X" title="Refs" />
+          <SectionHeader id="sec-9" numeral="IX" title="Refs" />
           <H2>References &amp; thanks.</H2>
 
           <div className="mt-8 grid grid-cols-1 md:grid-cols-12 md:gap-12">
             <div className="md:col-span-7 font-serif text-[16.5px] leading-[1.7] text-ink/85 space-y-4">
               <p>
-                Thanks to the six annotators, to Lambda Labs for moving us off a noisy
-                node mid-run, and to the Hugging Face community for keeping{' '}
-                <SmallCaps>DeBERTa-v3</SmallCaps> first-class. The comparison-bias
-                framing builds on the cited academic work; errors of method or judgment
-                are mine.
-              </p>
-              <p>
-                Code, data manifest (URLs only, no scraped text redistributed), eval
-                harness, and int8 production checkpoint:{' '}
-                <a
-                  href={REPO_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-mono text-[14.5px] hover:text-accent border-b border-ink/40 hover:border-accent"
-                >
-                  {REPO_URL.replace('https://', '')}
-                </a>
-                . Labeled-articles release: CC-BY-NC-SA after a 60-day embargo.
+                Special thanks to the{' '}
+                <span className="font-semibold text-ink">
+                  UCSB Graduate Mathematics Department
+                </span>{' '}
+                for providing the computing power that made the v2 training run
+                possible. Thanks also to the six annotators for the labeling
+                work, and to the Hugging Face community for keeping{' '}
+                <SmallCaps>DeBERTa-v3</SmallCaps> a first-class citizen in
+                Transformers. The comparison-bias framing builds on the cited
+                academic work; errors of method or judgment are mine.
               </p>
             </div>
 
@@ -1031,7 +972,7 @@ export default function HowIBuiltThis() {
             rel="noreferrer"
             className="hover:text-ink"
           >
-            By NeuralBias · LinkedIn
+            piamparekh · LinkedIn
           </a>
         </footer>
       </main>

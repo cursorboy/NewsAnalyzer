@@ -16,7 +16,7 @@ export const MODEL = {
     attentionHeads: 12,
     hiddenDim: 768,
   },
-  version: 'v3.0.0',
+  version: 'v2.0.0',
   trainedOn: '2026-01-22',
-  linkedinUrl: 'https://linkedin.com/in/REPLACE_ME',
+  linkedinUrl: 'https://linkedin.com/in/piamparekh',
 } as const
