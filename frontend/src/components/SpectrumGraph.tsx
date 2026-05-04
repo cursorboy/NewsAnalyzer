@@ -3,25 +3,37 @@ import { motion } from 'framer-motion'
 import { SAMPLE_ARTICLES, type ArticleMarker } from '../lib/sampleArticles'
 
 // Redistribute vertical positions so markers that share roughly the same
-// x-position don't visually stack on top of each other. Articles are bucketed
-// by 0.06-wide x-slots; within each slot, y values are evenly distributed
-// across the plot area (0.10 – 0.90) using a small dataset-aware algorithm.
+// x-position don't visually stack on top of each other. Strategy:
+// 1) Sort markers by x.
+// 2) Walk left-to-right, placing each marker at the lowest y that doesn't
+//    collide (within MIN_DY) with any previously placed marker whose x is
+//    within MIN_DX. Wrap to next y track when current track is taken.
+// This guarantees no two visible markers share both an x-band and a y-band.
 function dejitter(input: ArticleMarker[]): ArticleMarker[] {
-  const SLOT = 0.06
-  const buckets = new Map<number, number[]>()
-  input.forEach((_, i) => {
-    const key = Math.round(input[i].x / SLOT)
-    if (!buckets.has(key)) buckets.set(key, [])
-    buckets.get(key)!.push(i)
-  })
+  const MIN_DX = 0.10 // x-distance below which markers are considered "close"
+  const TRACKS = [0.14, 0.30, 0.46, 0.62, 0.78] // vertical y-tracks
   const out = input.map((m) => ({ ...m }))
-  buckets.forEach((indices) => {
-    if (indices.length === 1) return
-    // Distribute evenly between 0.12 and 0.88 of plot height
-    indices.forEach((idx, k) => {
-      out[idx].y = 0.12 + (k / Math.max(1, indices.length - 1)) * 0.76
-    })
-  })
+  const sorted = out
+    .map((m, i) => ({ m, i }))
+    .sort((a, b) => a.m.x - b.m.x)
+  const placed: { x: number; y: number }[] = []
+  for (const { i } of sorted) {
+    const x = out[i].x
+    // Find the first track that doesn't have a placed marker within MIN_DX of x
+    let chosen = TRACKS[0]
+    for (const ty of TRACKS) {
+      const collides = placed.some(
+        (p) => Math.abs(p.x - x) < MIN_DX && Math.abs(p.y - ty) < 0.001,
+      )
+      if (!collides) {
+        chosen = ty
+        break
+      }
+      chosen = ty // fallback: keep last track if all collide
+    }
+    out[i].y = chosen
+    placed.push({ x, y: chosen })
+  }
   return out
 }
 

@@ -24,6 +24,25 @@ function fallbackWhy(a: Article, idx: number): string {
   return `Loaded language density and economic framing place this clipping ${idx} steps from center, leaning ${dir} (${dist.toFixed(2)}).`
 }
 
+// Pick at most one article per source. When multiple articles come from the
+// same outlet, keep the one with the strongest signal (largest |score|) so the
+// graph shows the outlet's most distinctive take rather than a tepid one.
+function dedupeBySource(arts: Article[]): Article[] {
+  const seen = new Map<string, Article>()
+  for (const a of arts) {
+    const key = (a.source || 'unknown').toLowerCase()
+    const existing = seen.get(key)
+    if (!existing) {
+      seen.set(key, a)
+      continue
+    }
+    if (Math.abs(a.spectrum_score) > Math.abs(existing.spectrum_score)) {
+      seen.set(key, a)
+    }
+  }
+  return Array.from(seen.values())
+}
+
 function articlesToMarkers(arts: Article[]): ArticleMarker[] {
   return arts.map((a, i) => ({
     src: a.source,
@@ -43,21 +62,26 @@ export function Spectrum({ articles }: { articles: Article[] }) {
   const [selected, setSelected] = useState<string | null>(null)
   const hasSelection = selected !== null
 
+  // Deduplicate to one article per source for both the graph and the
+  // clippings list below. Multiple articles from the same outlet land on the
+  // same x-position and clutter the spectrum without adding signal.
+  const dedupedArticles = useMemo(() => dedupeBySource(articles), [articles])
+
   const stats = useMemo(() => {
-    if (articles.length === 0) {
+    if (dedupedArticles.length === 0) {
       return { avg: 0, sources: 0, count: 0, spread: 0 }
     }
-    const xs = articles.map((a) => a.spectrum_score)
-    const sources = new Set(articles.map((a) => a.source)).size
+    const xs = dedupedArticles.map((a) => a.spectrum_score)
+    const sources = new Set(dedupedArticles.map((a) => a.source)).size
     return {
       avg: xs.reduce((s, x) => s + x, 0) / xs.length,
       sources,
-      count: articles.length,
+      count: dedupedArticles.length,
       spread: Math.max(...xs) - Math.min(...xs),
     }
-  }, [articles])
+  }, [dedupedArticles])
 
-  const markers = useMemo(() => articlesToMarkers(articles), [articles])
+  const markers = useMemo(() => articlesToMarkers(dedupedArticles), [dedupedArticles])
 
   if (articles.length === 0) {
     return (
@@ -98,7 +122,7 @@ export function Spectrum({ articles }: { articles: Article[] }) {
         </div>
 
         <div className="mt-10 grid gap-x-10 gap-y-12 md:grid-cols-2 lg:grid-cols-3">
-          {articles.map((a, idx) => (
+          {dedupedArticles.map((a, idx) => (
             <Clipping
               key={a.url || idx}
               article={a}
