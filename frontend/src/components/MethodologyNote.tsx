@@ -16,7 +16,7 @@ export default function MethodologyNote() {
   return (
     <section className="bg-paper-cream">
       <SectionFlag
-        label="Methodology"
+        label="How I did it"
         meta={`Research note &mdash; ${MODEL.version}`.replace('&mdash;', '—')}
       />
 
@@ -153,19 +153,19 @@ export default function MethodologyNote() {
               LinkedIn &middot; reply within 24h
             </p>
             <p className="mt-6 font-serif text-[15px] italic leading-snug text-ink/70">
-              Want to see the real network forward-pass? Open the{' '}
+              Want to see the real network forward-pass?{' '}
               <Link
                 to="/inference-lab"
                 className="border-b border-ink/40 pb-0.5 not-italic font-sans uppercase tracking-[0.18em] text-[11px] text-ink hover:text-accent hover:border-accent"
               >
-                inference lab &rarr;
+                Try the model yourself &rarr;
               </Link>
               {'  '}or{' '}
               <Link
                 to="/how-i-built-this"
                 className="border-b border-ink/40 pb-0.5 not-italic font-sans uppercase tracking-[0.18em] text-[11px] text-ink hover:text-accent hover:border-accent"
               >
-                read the full methodology &rarr;
+                See how I did it &rarr;
               </Link>
             </p>
           </div>

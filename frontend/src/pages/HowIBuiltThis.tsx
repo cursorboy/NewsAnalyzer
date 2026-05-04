@@ -162,7 +162,7 @@ function TableOfContents() {
 export default function HowIBuiltThis() {
   return (
     <div className="min-h-screen bg-paper-cream text-ink">
-      <Masthead subtitle="Building TheBiasGraph · a methodology" />
+      <Masthead subtitle="How I built TheBiasGraph" />
 
       <main className="px-6 md:px-12 pb-12">
         {/* Title block — only allowed symmetric exception */}
@@ -698,7 +698,7 @@ export default function HowIBuiltThis() {
                 to="/inference-lab"
                 className="font-sans uppercase tracking-[0.16em] text-[11.5px] border-b border-ink/40 hover:border-accent hover:text-accent"
               >
-                inference lab
+                try-the-model page
               </Link>{' '}
               page is a different beast and worth flagging. It loads a
               quantized DistilBERT companion model entirely in the browser
@@ -949,7 +949,7 @@ export default function HowIBuiltThis() {
         {/* Footer */}
         <footer className="border-t border-ink/15 py-8 flex items-center justify-between font-sans text-[11px] uppercase tracking-[0.18em] text-ink/45">
           <span>
-            TheBiasGraph · Methodology · {MODEL.version}
+            TheBiasGraph · How I did it · {MODEL.version}
           </span>
           <a
             href={MODEL.linkedinUrl}

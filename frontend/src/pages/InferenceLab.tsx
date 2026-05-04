@@ -267,7 +267,7 @@ export default function InferenceLab() {
   return (
     <div className="min-h-screen bg-paper-cream text-ink">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
-        <Masthead subtitle="The Inference Lab" right="Notebook · No. 1" />
+        <Masthead subtitle="Try the model yourself" right="Notebook · No. 1" />
       </motion.div>
 
       <main>
@@ -431,7 +431,7 @@ export default function InferenceLab() {
                   to="/how-i-built-this"
                   className="mt-6 inline-block font-sans text-[12px] uppercase tracking-[0.22em] text-ink border-b border-ink pb-1 hover:text-accent hover:border-accent transition-colors"
                 >
-                  Read the methodology &rarr;
+                  See how I did it &rarr;
                 </Link>
               </div>
               <div className="col-span-7">
@@ -443,7 +443,7 @@ export default function InferenceLab() {
         </ScrollSection>
 
         <footer className="border-t border-ink/15 px-12 py-7 flex items-center justify-between font-sans text-[11px] uppercase tracking-[0.22em] text-ink/55">
-          <span>TheBiasGraph &middot; Inference Lab</span>
+          <span>TheBiasGraph &middot; Try the model yourself</span>
           <span>
             @xenova/transformers
             {loaded ? ` · v${loaded.transformersVersion}` : ''} &middot; ONNX Runtime Web

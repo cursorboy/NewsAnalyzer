@@ -141,13 +141,16 @@ function HeroSection({
             Today&apos;s reading &middot; No. 1
           </div>
           <h2 className="mt-4 font-display font-black text-ink text-[88px] leading-[0.94] tracking-mega-tight">
-            The same story,
+            See how every
             <br />
-            read every which way.
+            outlet covers
+            <br />
+            the same story.
           </h2>
           <p className="mt-6 max-w-2xl font-serif text-[20px] italic leading-[1.45] text-ink/65">
-            Search any topic. Every article we find is read by the model and plotted
-            across the political spectrum &mdash; so you see the angles, not just the takes.
+            Search any topic. A custom neural network reads each article we find,
+            scores it across eight bias dimensions, and plots it on the political
+            spectrum &mdash; so you can compare framing across the press at a glance.
           </p>
         </motion.div>
 
@@ -519,13 +522,13 @@ function NoteSection() {
             to="/inference-lab"
             className="text-ink border-b-2 border-ink pb-1 hover:text-accent hover:border-accent transition-colors"
           >
-            Open the Inference Lab &rarr;
+            Try the model yourself &rarr;
           </Link>
           <Link
             to="/how-i-built-this"
             className="text-ink/70 border-b border-ink/40 pb-1 hover:text-accent hover:border-accent transition-colors"
           >
-            Read the methodology &rarr;
+            See how I did it &rarr;
           </Link>
         </div>
       </div>

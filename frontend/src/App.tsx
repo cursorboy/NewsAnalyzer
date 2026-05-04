@@ -230,7 +230,7 @@ function AnimatedRoutes() {
               <Suspense
                 fallback={
                   <div className="min-h-screen bg-paper-cream flex items-center justify-center font-mono text-[12px] text-ink/55">
-                    {'> loading methodology …'}
+                    {'> loading how-i-did-it …'}
                   </div>
                 }
               >

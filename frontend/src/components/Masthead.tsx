@@ -16,8 +16,8 @@ const NAV_ITEMS: { label: string; to: string }[] = [
   { label: 'Search', to: '/search' },
   { label: 'Analyze', to: '/analyze' },
   { label: 'Play', to: '/play' },
-  { label: 'Lab', to: '/inference-lab' },
-  { label: 'Methodology', to: '/how-i-built-this' },
+  { label: 'Try the model', to: '/inference-lab' },
+  { label: 'How I did it', to: '/how-i-built-this' },
 ]
 
 export default function Masthead({
@@ -28,7 +28,7 @@ export default function Masthead({
   right?: string
 }) {
   const dateline = right ?? todayDateline()
-  const tagline = subtitle ?? 'A reading instrument for comparison bias'
+  const tagline = subtitle ?? 'A custom built neural network to detect article bias'
   return (
     <header className="bg-paper-cream">
       {/* 2px ink top rule */}
