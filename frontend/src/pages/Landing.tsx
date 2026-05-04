@@ -107,6 +107,8 @@ export default function Landing() {
 
         <PlaySection />
 
+        <TryModelSection />
+
         <NoteSection />
 
         <FooterStrip />
@@ -484,6 +486,99 @@ function GamePreview({ type }: { type: GameKey }) {
         House passes spending bill
       </motion.div>
     </div>
+  )
+}
+
+function TryModelSection() {
+  return (
+    <motion.section
+      className="grid grid-cols-12 gap-8 py-20 border-t border-ink/15"
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.15 }}
+      transition={{ duration: 0.5, ease: [0.2, 0.65, 0.3, 1] }}
+    >
+      <div className="col-span-2">
+        <div className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink/45 leading-[1.4]">
+          Try it
+          <br />
+          yourself
+        </div>
+      </div>
+
+      <div className="col-span-6">
+        <h3 className="font-display font-black text-ink text-[64px] leading-[0.94] tracking-mega-tight">
+          Run the
+          <br />
+          model live
+          <br />
+          in your tab.
+        </h3>
+        <p className="mt-6 max-w-xl font-serif text-[18px] italic leading-[1.5] text-ink/65">
+          Click load. A real DistilRoBERTa bias classifier downloads to your
+          browser. Type any sentence. The model votes BIASED or NEUTRAL and
+          shows you exactly which words pulled the verdict.
+        </p>
+        <div className="mt-8 flex items-center gap-6">
+          <Link
+            to="/inference-lab"
+            className="bg-ink text-paper-cream px-6 py-3 font-sans text-[12px] uppercase tracking-[0.22em] hover:bg-accent transition-colors inline-flex items-center gap-2"
+          >
+            Try the model yourself <span aria-hidden>&rarr;</span>
+          </Link>
+          <Link
+            to="/how-i-built-this"
+            className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink/70 border-b border-ink/40 pb-1 hover:text-accent hover:border-accent transition-colors"
+          >
+            See how I did it &rarr;
+          </Link>
+        </div>
+      </div>
+
+      <aside className="col-span-4 border-2 border-ink p-5 bg-paper self-start">
+        <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+          What loads in your browser
+        </div>
+        <dl className="mt-4 space-y-2 font-mono text-[12px]">
+          {[
+            ['Model', 'DistilRoBERTa-bias'],
+            ['Params', '67M'],
+            ['Precision', 'int8 ONNX'],
+            ['Size', '~82 MB'],
+            ['Trained on', 'WNC · 180k pairs'],
+            ['Latency', '~50 ms / sentence'],
+          ].map(([k, v]) => (
+            <div
+              key={k}
+              className="flex items-baseline justify-between gap-3 border-b border-ink/15 py-1.5"
+            >
+              <dt className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink/55">
+                {k}
+              </dt>
+              <dd className="text-ink tabular-nums truncate text-right">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="mt-5 grid grid-cols-3 gap-2 font-mono text-[10.5px] text-ink/55">
+          <div className="border border-ink/15 p-2">
+            <div className="text-ink/45 text-[9px] uppercase tracking-[0.18em]">Step 1</div>
+            <div className="mt-1 text-ink">Load</div>
+          </div>
+          <div className="border border-ink/15 p-2">
+            <div className="text-ink/45 text-[9px] uppercase tracking-[0.18em]">Step 2</div>
+            <div className="mt-1 text-ink">Type</div>
+          </div>
+          <div className="border border-ink/15 p-2">
+            <div className="text-ink/45 text-[9px] uppercase tracking-[0.18em]">Step 3</div>
+            <div className="mt-1 text-ink">Run</div>
+          </div>
+        </div>
+        <p className="mt-4 font-serif italic text-[12px] text-ink/55 leading-snug">
+          Every digit on the page comes back from the model running on your
+          machine. Open devtools and inspect window.tbgInfer.
+        </p>
+      </aside>
+    </motion.section>
   )
 }
 

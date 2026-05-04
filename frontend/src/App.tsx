@@ -8,7 +8,7 @@ import {
   useLocation,
   type Location,
 } from 'react-router-dom'
-import { useEffect, useState, lazy, Suspense, type ReactElement } from 'react'
+import { Component, useEffect, useState, lazy, Suspense, type ReactElement, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import './index.css'
 import { useSearch } from './hooks/useSearch'
@@ -28,6 +28,62 @@ const HowIBuiltThis = lazy(() => import('./pages/HowIBuiltThis'))
 import GuessSource from './components/games/GuessSource'
 import CompareTakes from './components/games/CompareTakes'
 import HeadlineRewrite from './components/games/HeadlineRewrite'
+
+class RouteErrorBoundary extends Component<
+  { children: ReactNode; label: string },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+  componentDidCatch(error: Error) {
+    // surface to console so the user can copy/paste the trace
+    // eslint-disable-next-line no-console
+    console.error(`[${this.props.label}] route crashed:`, error)
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen bg-paper-cream text-ink px-6 py-16">
+          <div className="mx-auto max-w-2xl">
+            <div className="font-sans text-[11px] uppercase tracking-[0.22em] text-accent">
+              Route error
+            </div>
+            <h1 className="mt-3 font-display font-black text-[44px] leading-[1.0] tracking-mega-tight text-ink">
+              The {this.props.label} page crashed.
+            </h1>
+            <p className="mt-4 font-serif italic text-[16px] text-ink/70 leading-snug">
+              Open devtools (Cmd+Opt+I) and check the console for the full trace.
+              The most common cause is a stale build cached by the browser - a
+              hard refresh (Cmd+Shift+R) usually fixes it.
+            </p>
+            <pre className="mt-6 bg-ink text-paper-cream/85 p-4 font-mono text-[11px] leading-[1.55] whitespace-pre-wrap break-words border border-ink">
+              {this.state.error.message}
+              {this.state.error.stack ? '\n\n' + this.state.error.stack : ''}
+            </pre>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="bg-ink text-paper-cream px-5 py-2.5 font-sans text-[11px] uppercase tracking-[0.22em] hover:bg-accent transition-colors"
+              >
+                Hard reload
+              </button>
+              <Link
+                to="/"
+                className="border border-ink text-ink px-5 py-2.5 font-sans text-[11px] uppercase tracking-[0.22em] hover:bg-ink hover:text-paper-cream transition-colors"
+              >
+                Back home
+              </Link>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 function Results() {
   const [params] = useSearchParams()
@@ -213,29 +269,33 @@ function AnimatedRoutes() {
           <Route
             path="/inference-lab"
             element={
-              <Suspense
-                fallback={
-                  <div className="min-h-screen bg-paper-cream flex items-center justify-center font-mono text-[12px] text-ink/55">
-                    {'> bootstrapping inference runtime …'}
-                  </div>
-                }
-              >
-                <InferenceLab />
-              </Suspense>
+              <RouteErrorBoundary label="try-the-model">
+                <Suspense
+                  fallback={
+                    <div className="min-h-screen bg-paper-cream flex items-center justify-center font-mono text-[12px] text-ink/55">
+                      {'> bootstrapping inference runtime …'}
+                    </div>
+                  }
+                >
+                  <InferenceLab />
+                </Suspense>
+              </RouteErrorBoundary>
             }
           />
           <Route
             path="/how-i-built-this"
             element={
-              <Suspense
-                fallback={
-                  <div className="min-h-screen bg-paper-cream flex items-center justify-center font-mono text-[12px] text-ink/55">
-                    {'> loading how-i-did-it …'}
-                  </div>
-                }
-              >
-                <HowIBuiltThis />
-              </Suspense>
+              <RouteErrorBoundary label="how-i-did-it">
+                <Suspense
+                  fallback={
+                    <div className="min-h-screen bg-paper-cream flex items-center justify-center font-mono text-[12px] text-ink/55">
+                      {'> loading how-i-did-it …'}
+                    </div>
+                  }
+                >
+                  <HowIBuiltThis />
+                </Suspense>
+              </RouteErrorBoundary>
             }
           />
           <Route path="/api-status" element={<APIStatusDashboard />} />

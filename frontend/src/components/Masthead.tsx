@@ -37,10 +37,13 @@ export default function Masthead({
       {/* Nameplate row */}
       <div className="px-12 pt-8 pb-5">
         <div className="grid grid-cols-12 items-end gap-6">
-          {/* Left col-3 — intentionally blank to balance the right col while
-              keeping the masthead uncluttered. */}
-          <div className="col-span-3" />
-
+          {/* Left col-3 — byline */}
+          <div className="col-span-3 flex flex-col gap-1 pb-1 font-sans text-[11px] uppercase tracking-[0.22em] text-ink/65">
+            <span>Made by Piam Parekh</span>
+            <span className="text-ink/45 normal-case tracking-normal font-serif italic text-[12px]">
+              {dateline}
+            </span>
+          </div>
 
           {/* Center col-6 nameplate */}
           <Link
@@ -55,11 +58,15 @@ export default function Masthead({
             </p>
           </Link>
 
-          {/* Right col-3 */}
+          {/* Right col-3 — model status */}
           <div className="col-span-3 flex flex-col items-end gap-2 pb-1 text-right">
             <ModelBadge />
-            <span className="font-serif italic text-[12px] text-ink/70">
-              {dateline}
+            <span className="inline-flex items-center gap-2 font-sans text-[10px] uppercase tracking-[0.22em] text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              Status &middot; Online
+            </span>
+            <span className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55 tabular-nums">
+              {MODEL.name} &middot; {MODEL.version}
             </span>
           </div>
         </div>
