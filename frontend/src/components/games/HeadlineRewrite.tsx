@@ -20,7 +20,24 @@ import { copy } from '../../lib/microcopy'
 const TOTAL_ROUNDS = 10
 const MIN_ROUNDS = 5
 const STORAGE_KEY = 'headline_rewrite_best'
-const MIN_BIAS = 0.15 // Loose bias filter — accept any article that's not literally neutral.
+// Strict bias gate. Mostly-neutral wire-service headlines have nothing for
+// the player to rewrite, so we exclude anything below this absolute spectrum
+// score. Raising this from 0.15 to 0.30 cuts straight-news pieces.
+const MIN_BIAS = 0.30
+// Loaded-language hard requirement: the headline must contain at least one
+// of these words/phrases, OR have |bias| ≥ MIN_BIAS, to be eligible.
+const LOADED_HEADLINE_WORDS = [
+  'slam', 'slammed', 'blast', 'blasted', 'rip', 'ripped', 'torch', 'torched',
+  'destroy', 'destroyed', 'crush', 'crushed', 'shock', 'shocked', 'shocking',
+  'bombshell', 'desperate', 'reckless', 'radical', 'extreme', 'extremist',
+  'disastrous', 'outrage', 'outraged', 'cave', 'caved', 'grilled', 'vow', 'vowed',
+  'unleash', 'unleashed', 'stunning', 'crackdown', 'gut', 'gutted', 'plummet',
+  'soared', 'soar', 'catastrophic', 'sweeping', 'historic', 'landmark',
+  'thinly veiled', 'giveaway', 'erupt', 'erupted', 'hostile', 'overreach',
+  'apocalyptic', 'wildly', 'common-sense', 'doomsday', 'patriotic', 'fired-up',
+  'capitulate', 'betrayal', 'rammed', 'alarmism', 'irreversible', 'hurtling',
+  'torpedo', 'spiral', 'crisis',
+]
 const SEED_QUERIES = ['us politics', 'climate change', 'immigration', 'economy', 'foreign policy']
 
 const FAUX_PROGRESS = [
@@ -127,51 +144,68 @@ export default function HeadlineRewrite() {
   const fetchPool = async (topic: string): Promise<Article[]> => {
     const collected: Article[] = []
     const seen = new Set<string>()
-    const safeAdd = (a: Article, threshold: number) => {
+
+    const topicTerms = topic
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= 3)
+    const matchesTopic = (a: Article) => {
+      if (topicTerms.length === 0) return true
+      const hay = `${a.title ?? ''} ${a.snippet ?? ''}`.toLowerCase()
+      return topicTerms.some((t) => hay.includes(t))
+    }
+    const isBiased = (a: Article) => {
+      const score = Math.abs(a.spectrum_score ?? 0)
+      if (score >= MIN_BIAS) return true
+      // Some scored neutral but the headline is plainly loaded. Accept on word match.
+      const headline = (a.title ?? '').toLowerCase()
+      return LOADED_HEADLINE_WORDS.some((w) => headline.includes(w))
+    }
+    const safeAdd = (a: Article, requireTopic: boolean) => {
       if (!a || !a.id || seen.has(a.id)) return
-      if (Math.abs(a.spectrum_score ?? 0) < threshold) return
+      if (!isBiased(a)) return
+      if (requireTopic && !matchesTopic(a)) return
       seen.add(a.id)
       collected.push(a)
     }
-    // Lead with chosen topic; fall through to seeds for variety.
-    const queries = topic
-      ? [topic, ...SEED_QUERIES.filter((q) => q !== topic)]
-      : shuffle(SEED_QUERIES)
 
-    // Pass 1: live search with strict-ish bias filter.
-    for (const q of queries) {
+    // Pass 1: live search on chosen topic only, must be loaded AND on-topic.
+    if (topic) {
       try {
-        const data = await searchArticles(q)
-        for (const a of data.articles ?? []) safeAdd(a, MIN_BIAS)
-        if (collected.length >= TOTAL_ROUNDS) break
+        const data = await searchArticles(topic)
+        for (const a of data.articles ?? []) safeAdd(a, true)
       } catch {
-        continue
+        // network noise — keep going
       }
     }
 
-    // Pass 2: fallback corpus (offline-safe), same bias threshold.
+    // Pass 2: fallback corpus filtered to topic, still must be loaded.
     if (collected.length < TOTAL_ROUNDS) {
       for (const q of SEED_QUERIES) {
-        for (const a of fallbackSearch(q)) safeAdd(a, MIN_BIAS)
+        for (const a of fallbackSearch(q)) safeAdd(a, true)
         if (collected.length >= TOTAL_ROUNDS) break
       }
     }
 
-    // Pass 3: relaxed — drop the bias filter entirely so the game can ALWAYS
-    // start with at least MIN_ROUNDS articles. Loaded headlines are harder to
-    // come by than expected when the LLM dampens scores.
+    // Pass 3 (last resort): if the chosen topic genuinely doesn't have
+    // enough loaded headlines, broaden across seeds — but the loaded-bias
+    // requirement is NEVER relaxed. A neutral wire-service piece is no
+    // fun to rewrite, so we'd rather show MIN_ROUNDS than ten dull ones.
     if (collected.length < MIN_ROUNDS) {
+      const queries = topic
+        ? [topic, ...SEED_QUERIES.filter((q) => q !== topic)]
+        : shuffle(SEED_QUERIES)
       for (const q of queries) {
         try {
           const data = await searchArticles(q)
-          for (const a of data.articles ?? []) safeAdd(a, 0)
+          for (const a of data.articles ?? []) safeAdd(a, false)
           if (collected.length >= TOTAL_ROUNDS) break
         } catch {
           continue
         }
       }
       for (const q of SEED_QUERIES) {
-        for (const a of fallbackSearch(q)) safeAdd(a, 0)
+        for (const a of fallbackSearch(q)) safeAdd(a, false)
         if (collected.length >= TOTAL_ROUNDS) break
       }
     }
@@ -197,7 +231,7 @@ export default function HeadlineRewrite() {
       const list = await fetchPool(topic)
       if (list.length < MIN_ROUNDS) {
         setLoadError(
-          `Only ${list.length} headlines available for "${topic}". Try a different topic.`,
+          `Couldn't find enough loaded headlines on "${topic}" — most coverage we pulled was already neutral. Try a more contentious topic (e.g. immigration, gun policy, tariffs).`,
         )
         setLoading(false)
         return
@@ -493,10 +527,24 @@ export default function HeadlineRewrite() {
                   {draft.trim()}
                 </h3>
                 {(() => {
-                  const ideal = (scoreResult?.ideal && scoreResult.ideal.trim())
-                    || heuristicNeutralRewrite(currentArticle.title)
-                  const sameAsUser = ideal.trim().toLowerCase() === draft.trim().toLowerCase()
-                  if (sameAsUser) return null
+                  const stripOutlet = (s: string) =>
+                    s
+                      .replace(/\s+[—–-]\s+(The\s+)?[A-Z][A-Za-z.&\s']{2,}$/u, '')
+                      .replace(/\s+\|\s+(The\s+)?[A-Z][A-Za-z.&\s']{2,}$/u, '')
+                      .trim()
+                  const norm = (s: string) =>
+                    s.toLowerCase().replace(/[\s\W_]+/g, ' ').trim()
+
+                  const cleanedOriginal = stripOutlet(currentArticle.title)
+                  const rawIdeal =
+                    (scoreResult?.ideal && scoreResult.ideal.trim()) ||
+                    heuristicNeutralRewrite(cleanedOriginal)
+                  const ideal = stripOutlet(rawIdeal)
+
+                  const sameAsUser = norm(ideal) === norm(draft)
+                  const sameAsOriginal = norm(ideal) === norm(cleanedOriginal)
+                  if (sameAsUser || sameAsOriginal || !ideal) return null
+
                   return (
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}

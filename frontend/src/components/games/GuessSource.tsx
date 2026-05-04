@@ -86,32 +86,64 @@ export default function GuessSource() {
   const fetchPool = async (topic: string): Promise<Article[]> => {
     const collected: Article[] = []
     const seenIds = new Set<string>()
-    const safeAdd = (a: Article) => {
+
+    const topicTerms = topic
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length >= 3)
+    const matchesTopic = (a: Article) => {
+      if (topicTerms.length === 0) return true
+      const hay = `${a.title ?? ''} ${a.snippet ?? ''}`.toLowerCase()
+      return topicTerms.some((t) => hay.includes(t))
+    }
+    const safeAdd = (a: Article, requireTopic: boolean) => {
       if (!a || !a.id || seenIds.has(a.id)) return
       if (!a.source) return
       if (!PLAUSIBLE_OUTLETS.some((o) => o.toLowerCase() === a.source.toLowerCase())) return
+      if (requireTopic && !matchesTopic(a)) return
       seenIds.add(a.id)
       collected.push(a)
     }
-    // Lead with the chosen topic; fall through to seeds for variety.
-    const queries = topic
-      ? [topic, ...SEED_QUERIES.filter((q) => q !== topic)]
-      : shuffle(SEED_QUERIES)
-    for (const q of queries) {
+
+    // Pass 1: chosen topic only, must mention it.
+    if (topic) {
       try {
-        const data = await searchArticles(q)
-        for (const a of data.articles ?? []) safeAdd(a)
-        if (collected.length >= TOTAL_ROUNDS) break
+        const data = await searchArticles(topic)
+        for (const a of data.articles ?? []) safeAdd(a, true)
       } catch {
         /* try next */
       }
     }
+
+    // Pass 2: fallback corpus filtered to topic.
     if (collected.length < TOTAL_ROUNDS) {
       for (const q of SEED_QUERIES) {
-        for (const a of fallbackSearch(q)) safeAdd(a)
+        for (const a of fallbackSearch(q)) safeAdd(a, true)
         if (collected.length >= TOTAL_ROUNDS) break
       }
     }
+
+    // Pass 3: only if we still don't have a full pool, drop the topic
+    // requirement and reach for seed queries.
+    if (collected.length < TOTAL_ROUNDS) {
+      const queries = topic
+        ? [topic, ...SEED_QUERIES.filter((q) => q !== topic)]
+        : shuffle(SEED_QUERIES)
+      for (const q of queries) {
+        try {
+          const data = await searchArticles(q)
+          for (const a of data.articles ?? []) safeAdd(a, false)
+          if (collected.length >= TOTAL_ROUNDS) break
+        } catch {
+          /* try next */
+        }
+      }
+      for (const q of SEED_QUERIES) {
+        for (const a of fallbackSearch(q)) safeAdd(a, false)
+        if (collected.length >= TOTAL_ROUNDS) break
+      }
+    }
+
     return shuffle(collected).slice(0, TOTAL_ROUNDS)
   }
 
