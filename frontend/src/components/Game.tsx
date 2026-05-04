@@ -387,7 +387,7 @@ export default function Game() {
                 </div>
                 <div className="flex items-baseline justify-between gap-3 pt-3">
                   <p className="font-sans text-[10px] uppercase tracking-[0.28em] text-ink/65">
-                    Clipping &mdash; Source Withheld
+                    Clipping - Source Withheld
                   </p>
                   <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink/45">
                     Round {score.currentRound} / {TOTAL_ROUNDS}
@@ -508,7 +508,7 @@ export default function Game() {
                 detail={
                   outcome === 'correct'
                     ? `Within ±0.3 of the network reading (${currentArticle.spectrum_score.toFixed(2)}).`
-                    : `Network had this at ${currentArticle.spectrum_score.toFixed(2)} — you were ${Math.abs(userGuess - currentArticle.spectrum_score).toFixed(2)} off.`
+                    : `Network had this at ${currentArticle.spectrum_score.toFixed(2)}, you were ${Math.abs(userGuess - currentArticle.spectrum_score).toFixed(2)} off.`
                 }
               />
 

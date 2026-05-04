@@ -69,7 +69,7 @@ export default function ArticleDetail() {
     if (!detail) return
     const a = detail.article
     if (!a.url && !a.snippet && !a.title) {
-      setError('Nothing to analyze — article is missing a URL and body.')
+      setError('Nothing to analyze, article is missing a URL and body.')
       return
     }
     setAnalyzing(true)
@@ -81,7 +81,7 @@ export default function ArticleDetail() {
         text: a.snippet,
       })
       // Preserve the real article metadata (id, source, published_at, url) the
-      // user came in with — the analyze backend may synthesize a fresh id.
+      // user came in with, the analyze backend may synthesize a fresh id.
       setDetail({
         ...fresh,
         article: { ...a, ...fresh.article, id: a.id, url: a.url || fresh.article.url },
@@ -261,7 +261,7 @@ export default function ArticleDetail() {
               <div className="mt-[3px] border-t border-ink/30" />
             </div>
             <p className="-mt-3 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/65">
-              Sidebar &mdash; Network reading
+              Sidebar - Network reading
             </p>
 
             <InferenceTrace
@@ -439,18 +439,18 @@ function LinguisticSignals({
   const items: { label: string; value: string; sub: string }[] = [
     {
       label: 'Loaded language',
-      value: placeholder ? '—' : String(loadedCount),
+      value: placeholder ? '-' : String(loadedCount),
       sub: 'charged phrases flagged in body',
     },
     {
       label: 'Source diversity',
       value: placeholder
-        ? '—'
+        ? '-'
         : sources
           ? sources.score.toFixed(2)
           : d.source_diversity !== undefined
             ? d.source_diversity.toFixed(2)
-            : '—',
+            : '-',
       sub:
         !placeholder && sources
           ? `${sources.quoted_entities.length} named · ${sources.anonymous_count} anonymous`
@@ -459,12 +459,12 @@ function LinguisticSignals({
     {
       label: 'Headline ↔ body skew',
       value: placeholder
-        ? '—'
+        ? '-'
         : skew
           ? `${skew.delta > 0 ? '+' : ''}${skew.delta.toFixed(2)}`
           : d.headline_body_skew !== undefined
             ? d.headline_body_skew.toFixed(2)
-            : '—',
+            : '-',
       sub:
         !placeholder && skew
           ? `headline ${skew.headline_tone.toFixed(2)} · body ${skew.body_tone.toFixed(2)}`

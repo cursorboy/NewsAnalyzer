@@ -37,17 +37,10 @@ export default function Masthead({
       {/* Nameplate row */}
       <div className="px-12 pt-8 pb-5">
         <div className="grid grid-cols-12 items-end gap-6">
-          {/* Left col-3 */}
-          <div className="col-span-3 flex flex-col gap-1 pb-1 font-sans text-[11px] uppercase tracking-[0.22em] text-ink/65">
-            <span className="flex items-center gap-2">
-              <span>Vol. II</span>
-              <span className="text-ink/30" aria-hidden>
-                ·
-              </span>
-              <span>No. {MODEL.version}</span>
-            </span>
-            <span className="text-ink/45">Comparison Bias Desk</span>
-          </div>
+          {/* Left col-3 — intentionally blank to balance the right col while
+              keeping the masthead uncluttered. */}
+          <div className="col-span-3" />
+
 
           {/* Center col-6 nameplate */}
           <Link

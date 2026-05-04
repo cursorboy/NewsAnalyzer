@@ -91,7 +91,7 @@ export default function PlayHud({
               <ScoreNumber value={userScore} color="blue" />
             </span>
           </div>
-          <span className="font-serif text-lg md:text-xl text-ink/30">—</span>
+          <span className="font-serif text-lg md:text-xl text-ink/30">-</span>
           <div className="flex items-baseline gap-2 md:gap-3">
             <span className="text-2xl md:text-3xl">
               <ScoreNumber value={modelScore} color="red" />

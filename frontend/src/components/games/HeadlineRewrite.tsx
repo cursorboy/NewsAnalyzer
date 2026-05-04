@@ -175,7 +175,7 @@ export default function HeadlineRewrite() {
         const data = await searchArticles(topic)
         for (const a of data.articles ?? []) safeAdd(a, true)
       } catch {
-        // network noise — keep going
+        // network noise, keep going
       }
     }
 
@@ -188,7 +188,7 @@ export default function HeadlineRewrite() {
     }
 
     // Pass 3 (last resort): if the chosen topic genuinely doesn't have
-    // enough loaded headlines, broaden across seeds — but the loaded-bias
+    // enough loaded headlines, broaden across seeds, but the loaded-bias
     // requirement is NEVER relaxed. A neutral wire-service piece is no
     // fun to rewrite, so we'd rather show MIN_ROUNDS than ten dull ones.
     if (collected.length < MIN_ROUNDS) {
@@ -212,7 +212,7 @@ export default function HeadlineRewrite() {
 
     // Pad pool to exactly TOTAL_ROUNDS so the game's round counter never
     // outruns the available articles. If we ended up with 6 unique articles,
-    // we cycle them so the user still plays 10 rounds — they may see a
+    // we cycle them so the user still plays 10 rounds, they may see a
     // headline twice, which is fine for a rewrite game.
     let final = shuffle(collected)
     if (final.length === 0) return []
@@ -231,7 +231,7 @@ export default function HeadlineRewrite() {
       const list = await fetchPool(topic)
       if (list.length < MIN_ROUNDS) {
         setLoadError(
-          `Couldn't find enough loaded headlines on "${topic}" — most coverage we pulled was already neutral. Try a more contentious topic (e.g. immigration, gun policy, tariffs).`,
+          `Couldn't find enough loaded headlines on "${topic}", most coverage we pulled was already neutral. Try a more contentious topic (e.g. immigration, gun policy, tariffs).`,
         )
         setLoading(false)
         return
@@ -506,9 +506,9 @@ export default function HeadlineRewrite() {
                 }
                 detail={
                   roundDelta.user >= 7
-                    ? `Strong neutral rewrite — ${scoreResult?.total ?? 0}/100.`
+                    ? `Strong neutral rewrite, ${scoreResult?.total ?? 0}/100.`
                     : roundDelta.user >= 4
-                      ? `Decent — ${scoreResult?.total ?? 0}/100. Watch for loaded words.`
+                      ? `Decent, ${scoreResult?.total ?? 0}/100. Watch for loaded words.`
                       : `Try stripping out loaded language and stay closer to the facts.`
                 }
               />
@@ -529,7 +529,7 @@ export default function HeadlineRewrite() {
                 {(() => {
                   const stripOutlet = (s: string) =>
                     s
-                      .replace(/\s+[—–-]\s+(The\s+)?[A-Z][A-Za-z.&\s']{2,}$/u, '')
+                      .replace(/\s+[-–-]\s+(The\s+)?[A-Z][A-Za-z.&\s']{2,}$/u, '')
                       .replace(/\s+\|\s+(The\s+)?[A-Z][A-Za-z.&\s']{2,}$/u, '')
                       .trim()
                   const norm = (s: string) =>
@@ -559,7 +559,7 @@ export default function HeadlineRewrite() {
                         {ideal}
                       </h3>
                       <p className="mt-2 font-serif text-[12px] text-ink/45 leading-snug">
-                        One reference rewrite from the network — not the only
+                        One reference rewrite from the network, not the only
                         correct answer, but a useful target to compare against.
                       </p>
                     </motion.div>

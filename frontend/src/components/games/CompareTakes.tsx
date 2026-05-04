@@ -190,7 +190,7 @@ export default function CompareTakes() {
             Two desks.
           </h1>
           <p className="mt-6 max-w-xl font-serif text-lg md:text-xl italic text-ink/70">
-            Two articles per round on the same topic. Decide which is more biased — and which way it leans.
+            Two articles per round on the same topic. Decide which is more biased, and which way it leans.
           </p>
 
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 border-t border-l border-ink/15">

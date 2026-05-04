@@ -293,8 +293,8 @@ export default function InferenceLab() {
               <p className="font-serif text-[18px] italic text-ink/70 leading-snug">
                 Click <span className="not-italic">Load model</span> and a real
                 DistilRoBERTa bias classifier downloads to your browser. Type
-                any sentence and the model — fine-tuned on Wikipedia
-                neutrality-edit pairs by Spinde et al. — labels it{' '}
+                any sentence and the model, fine-tuned on Wikipedia
+                neutrality-edit pairs by Spinde et al., labels it{' '}
                 <strong>BIASED</strong> or <strong>NEUTRAL</strong>. Every
                 number on this page is computed from the weights running in
                 front of you.
@@ -303,7 +303,7 @@ export default function InferenceLab() {
                 Model · valurank/distilroberta-bias · DistilRoBERTa-base · 6
                 layers · 12 heads · trained on the Wiki-Neutrality Corpus
                 (~180k sentence pairs). The production TheBiasGraph score is a
-                separate server-side composite — this is the in-browser linguistic-bias
+                separate server-side composite, this is the in-browser linguistic-bias
                 signal that the production system rolls up.
               </p>
             </div>
@@ -313,7 +313,7 @@ export default function InferenceLab() {
             <ReadingGuide
               who="New to ML?"
               tone="serif"
-              body="Type a sentence and click Run. The model votes BIASED or NEUTRAL. The orange bars under each word show how much the verdict would change if that word disappeared — bigger bar means the model leaned harder on that word. Try the same sentence reworded neutrally and watch the bars shrink."
+              body="Type a sentence and click Run. The model votes BIASED or NEUTRAL. The orange bars under each word show how much the verdict would change if that word disappeared, bigger bar means the model leaned harder on that word. Try the same sentence reworded neutrally and watch the bars shrink."
             />
             <ReadingGuide
               who="ML reader?"
@@ -323,7 +323,7 @@ export default function InferenceLab() {
           </div>
         </motion.section>
 
-        {/* ---------- §I + §II — Model card + Loader ---------- */}
+        {/* ---------- §I + §II, Model card + Loader ---------- */}
         <ScrollSection>
           <div className="border-t border-ink/15 px-12 py-12">
             <div className="grid grid-cols-12 gap-8 items-start">
@@ -372,7 +372,7 @@ export default function InferenceLab() {
                   Wall clock
                 </div>
                 <div className="font-mono text-[18px] tabular-nums text-ink">
-                  {artifacts ? `${wallClockDisplay.toFixed(3)} ms` : '— · —'}
+                  {artifacts ? `${wallClockDisplay.toFixed(3)} ms` : '- · -'}
                 </div>
               </div>
             </div>
@@ -387,7 +387,7 @@ export default function InferenceLab() {
           </div>
         </ScrollSection>
 
-        {/* ---------- §V + §VI — Saliency + Hashes ---------- */}
+        {/* ---------- §V + §VI, Saliency + Hashes ---------- */}
         <ScrollSection>
           <div className="border-t border-ink/15 px-12 py-12">
             <div className="grid grid-cols-12 gap-8 items-start">
@@ -417,13 +417,13 @@ export default function InferenceLab() {
                   Closing note
                 </div>
                 <h3 className="mt-3 font-display font-black text-ink tracking-display-tight leading-[1.0] text-[30px]">
-                  Don't trust me — run it yourself.
+                  Don't trust me, run it yourself.
                 </h3>
                 <p className="mt-4 font-serif text-[16px] italic text-ink/70 leading-snug">
                   Every number on this page comes back from the model in your
                   browser. Open devtools and call{' '}
                   <span className="not-italic font-mono text-[14px] text-ink">tbgInfer(text)</span>{' '}
-                  with any string — you'll get the same logits, the same
+                  with any string, you'll get the same logits, the same
                   argmax, and the same occlusion scores the page just rendered.
                   No fixtures, no fakes.
                 </p>
@@ -510,7 +510,7 @@ function SectionHeader({ numeral, label }: { numeral: string; label: string }) {
     <div className="mb-6">
       <div className="flex items-baseline gap-3 font-sans text-[10px] uppercase tracking-[0.24em] text-ink/65">
         <span className="text-ink">{numeral}</span>
-        <span className="text-ink/30">—</span>
+        <span className="text-ink/30">-</span>
         <span>{label}</span>
         <span className="ml-2 flex-1 border-t border-ink/20" />
       </div>
@@ -518,13 +518,13 @@ function SectionHeader({ numeral, label }: { numeral: string; label: string }) {
   )
 }
 
-// ---------- §I — Model card ----------
+// ---------- §I, Model card ----------
 
 function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
   const cfg = loaded?.config
   const tk = loaded?.tokenizerInfo
   const [showRaw, setShowRaw] = useState(false)
-  const dash = '—'
+  const dash = '-'
   const rows: Array<[string, string]> = [
     ['Model', MODEL_ID],
     ['Architecture', cfg ? `${cfg.modelType} · ${cfg.architectures[0] ?? 'encoder-only'}` : dash],
@@ -548,7 +548,7 @@ function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
             A real bias classifier.
           </h2>
           <p className="mt-1 font-serif italic text-ink/60 text-[14px]">
-            DistilRoBERTa fine-tuned on the Wiki-Neutrality Corpus —
+            DistilRoBERTa fine-tuned on the Wiki-Neutrality Corpus -
             sentence-level BIASED vs NEUTRAL.
           </p>
         </div>
@@ -568,7 +568,7 @@ function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
         network re-reads the sentence. <strong>Heads</strong> are how many
         different "angles" it considers each pass. <strong>Hidden dim</strong>{' '}
         is how much room each word gets to be described in. The fields stay
-        as <span className="font-mono not-italic">—</span> until the model
+        as <span className="font-mono not-italic">-</span> until the model
         actually arrives.
       </PlainEnglish>
 
@@ -597,7 +597,7 @@ function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
             onClick={() => setShowRaw((s) => !s)}
             className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/65 border-b border-ink/30 pb-0.5 hover:text-accent hover:border-accent transition-colors"
           >
-            {showRaw ? '— hide raw config.json' : '+ raw config.json'}
+            {showRaw ? '- hide raw config.json' : '+ raw config.json'}
           </button>
           <AnimatePresence>
             {showRaw && (
@@ -623,7 +623,7 @@ function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
   )
 }
 
-// ---------- §II — Loader terminal ----------
+// ---------- §II, Loader terminal ----------
 
 const LoaderTerminal = ({
   ref,
@@ -776,7 +776,7 @@ function TokenizerPanel({
             placeholder={loaded ? 'Type something to tokenize …' : 'Load the model first.'}
           />
           <PlainEnglish>
-            Computers don't read words — they read numbers. The tokenizer
+            Computers don't read words, they read numbers. The tokenizer
             chops your sentence into small pieces (a word, sometimes a
             fragment of a word) and looks each piece up in a dictionary of{' '}
             {loaded ? loaded.config.vocabSize.toLocaleString() : 'tens of thousands'}{' '}
@@ -799,9 +799,9 @@ function TokenizerPanel({
             seq · chars · max
           </div>
           <div className="mt-1 font-mono text-[13px] tabular-nums text-ink">
-            {tokenizedPreview ? tokenizedPreview.tokens.length : '—'} ·{' '}
+            {tokenizedPreview ? tokenizedPreview.tokens.length : '-'} ·{' '}
             {charCount} ·{' '}
-            {tokenizedPreview ? tokenizedPreview.tokens.length : '—'}
+            {tokenizedPreview ? tokenizedPreview.tokens.length : '-'}
             {loaded ? `/${loaded.config.maxPositionEmbeddings}` : ''}
           </div>
           <div className="mt-3 font-serif italic text-[13px] text-ink/55">
@@ -933,7 +933,7 @@ function ForwardPassPanel({
               </>
             ) : (
               <div className="font-serif italic text-[14px] text-ink/40">
-                No verdict yet — run a forward pass.
+                No verdict yet, run a forward pass.
               </div>
             )}
 
@@ -980,7 +980,7 @@ function ForwardPassPanel({
             </div>
           </div>
           <div className="mt-3 font-serif italic text-[12px] text-ink/55 leading-snug">
-            BIASED / NEUTRAL come from the model's training labels — Wikipedia
+            BIASED / NEUTRAL come from the model's training labels, Wikipedia
             sentences before vs after a Neutral-Point-of-View edit. A high
             BIASED score means the sentence reads like an editor would have
             re-written it.
@@ -994,7 +994,7 @@ function ForwardPassPanel({
             <span className="tabular-nums text-ink/40">
               {artifacts
                 ? `${artifacts.occlusionRuns} mask runs · ${artifacts.totalMs.toFixed(0)} ms total`
-                : '—'}
+                : '-'}
             </span>
           </div>
           <OcclusionChart artifacts={artifacts} />
@@ -1024,10 +1024,10 @@ function ForwardPassPanel({
               <div className="mt-1 text-ink/80 break-all leading-snug">
                 {artifacts
                   ? `[${artifacts.inputIds.join(', ')}]`
-                  : '—'}
+                  : '-'}
               </div>
               <div className="mt-2 text-ink/40 text-[10px]">
-                shape · [1, {artifacts ? artifacts.inputIds.length : '—'}]
+                shape · [1, {artifacts ? artifacts.inputIds.length : '-'}]
               </div>
             </div>
             <div className="border border-ink/30 bg-paper p-3">
@@ -1037,7 +1037,7 @@ function ForwardPassPanel({
               <div className="mt-1 text-ink/80 break-all leading-snug">
                 {artifacts
                   ? `[${artifacts.attentionMask.join(', ')}]`
-                  : '—'}
+                  : '-'}
               </div>
               <div className="mt-2 text-ink/40 text-[10px]">
                 1 = real token · 0 = padding
@@ -1050,10 +1050,10 @@ function ForwardPassPanel({
               <div className="mt-1 text-ink/80 break-all leading-snug">
                 {artifacts
                   ? `[${artifacts.logits.map((l) => l.toFixed(4)).join(', ')}]`
-                  : '—'}
+                  : '-'}
               </div>
               <div className="mt-2 text-ink/40 text-[10px]">
-                shape · [1, {artifacts ? artifacts.logits.length : '—'}]
+                shape · [1, {artifacts ? artifacts.logits.length : '-'}]
               </div>
             </div>
           </div>
@@ -1087,7 +1087,7 @@ function OcclusionChart({ artifacts }: { artifacts: InferenceArtifacts | null })
     return (
       <div className="border border-dashed border-ink/30 bg-paper h-[220px] flex items-center justify-center">
         <span className="font-serif italic text-[13px] text-ink/35 px-3 text-center leading-snug">
-          Run a forward pass — saliency is computed by re-running the model
+          Run a forward pass, saliency is computed by re-running the model
           with each word masked, one at a time.
         </span>
       </div>
@@ -1134,7 +1134,7 @@ function OcclusionChart({ artifacts }: { artifacts: InferenceArtifacts | null })
                 />
               </div>
               <span className="font-mono text-[10px] tabular-nums text-ink/55 w-14 text-right">
-                {isSpecial ? '—' : `−${(score * 100).toFixed(2)}%`}
+                {isSpecial ? '-' : `−${(score * 100).toFixed(2)}%`}
               </span>
               <span className="font-mono text-[10px] tabular-nums text-ink/35 w-16 text-right">
                 {isSpecial
@@ -1171,7 +1171,7 @@ function SaliencyPanel({ artifacts }: { artifacts: InferenceArtifacts | null }) 
       <PlainEnglish>
         Each word is highlighted in proportion to how much the verdict's
         confidence drops when that word is masked out. This is genuine
-        importance — not a guess. If "reckless" or "slammed" lights up, the
+        importance, not a guess. If "reckless" or "slammed" lights up, the
         model genuinely needed those words to vote the way it did.
       </PlainEnglish>
 
@@ -1340,7 +1340,7 @@ function HashBlock({ label, value }: { label: string; value: string | null }) {
             )}
           </>
         ) : (
-          <span className="text-ink/40">—</span>
+          <span className="text-ink/40">-</span>
         )}
       </div>
     </div>
@@ -1377,7 +1377,7 @@ function DevtoolsPanel({
 
   const globals: Array<[string, string]> = [
     ['window.tbgModel', 'AutoModelForSequenceClassification instance'],
-    ['window.tbgTokenizer', 'AutoTokenizer instance — call as a function'],
+    ['window.tbgTokenizer', 'AutoTokenizer instance, call as a function'],
     ['window.tbgConfig', 'parsed config.json (layers, heads, hidden, vocab)'],
     ['window.tbgInfer(text)', 'runs the full forward pass and returns artifacts'],
   ]

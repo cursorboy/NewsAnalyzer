@@ -75,7 +75,7 @@ function readBest(key: string): number {
 }
 
 function fmtBest(n: number): string {
-  if (n === 0) return '—'
+  if (n === 0) return '-'
   return n % 1 === 0 ? n.toFixed(0) : n.toFixed(1)
 }
 
@@ -110,7 +110,7 @@ export default function PlayHub() {
           <div className="col-span-12 md:col-span-5 md:border-l md:border-ink/20 md:pl-10">
             <p className="font-serif italic text-[18px] leading-[1.55] text-ink/70 md:text-[19px]">
               Four short games. The model has been training; how well do you read?
-              Each session is ten rounds &mdash; you, against TheBiasGraph v2.
+              Each session is ten rounds - you, against TheBiasGraph v2.
             </p>
             <div className="mt-5 flex items-center gap-3">
               <span className="block h-px w-10 bg-ink/40" aria-hidden />
@@ -131,7 +131,7 @@ export default function PlayHub() {
           </div>
         )}
 
-        {/* 2x2 game grid — white-box cards with depth and clear separation */}
+        {/* 2x2 game grid, white-box cards with depth and clear separation */}
         <section className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
           {GAMES.map((g) => {
             const best = bests[g.storageKey] ?? 0

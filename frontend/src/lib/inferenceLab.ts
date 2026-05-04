@@ -1,4 +1,4 @@
-// Inference Lab — real transformer in the browser via @xenova/transformers.
+// Inference Lab, real transformer in the browser via @xenova/transformers.
 // All numbers, logits, and saliency scores come from the actual ONNX forward
 // pass of valurank/distilroberta-bias (mirrored at protectai/distilroberta-
 // bias-onnx). DistilRoBERTa-base, fine-tuned on the Wiki-Neutrality Corpus
@@ -57,7 +57,7 @@ export function loadInferenceRuntime() {
         mod.env.backends.onnx.wasm = mod.env.backends.onnx.wasm || {}
         ;(mod.env.backends.onnx.wasm as { numThreads?: number }).numThreads = Math.min(cores, 4)
       } catch {
-        // older onnxruntime-web versions don't expose this — fine.
+        // older onnxruntime-web versions don't expose this, fine.
       }
       return mod
     })
@@ -203,7 +203,7 @@ export async function loadModel(
     } else if (e.status === 'download' && e.file) {
       // first byte hit
     } else if (e.status === 'progress' && e.file && typeof e.loaded === 'number') {
-      // streamed — handled in UI
+      // streamed, handled in UI
     } else if (e.status === 'done' && e.file) {
       const start = fileTimers.get(e.file) ?? performance.now()
       const ms = performance.now() - start
@@ -412,12 +412,12 @@ function makeEncodedWithIds(
 }
 
 export async function runForwardPass(text: string): Promise<InferenceArtifacts> {
-  if (!_loaded) throw new Error('Model not loaded yet — call loadModel() first.')
+  if (!_loaded) throw new Error('Model not loaded yet, call loadModel() first.')
   const { tokenizer, model, config, tokenizerInfo } = _loaded
 
   // transformers.js tokenizer call is async (returns a Promise of the encoded
   // input). Calling it synchronously gives back the Promise itself, which the
-  // model can't unpack — ONNX errors with "Missing the following inputs:
+  // model can't unpack, ONNX errors with "Missing the following inputs:
   // input_ids" because the Promise has no .input_ids property at runtime.
   const tk = tokenizer as (text: string) => Promise<EncoderInput> | EncoderInput
   const maybeEncoded = tk(text)

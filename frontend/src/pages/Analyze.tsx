@@ -38,7 +38,7 @@ function toUnit(v: number | undefined, range: DimRange): number {
 }
 
 function pctLabel(v: number | undefined, range: DimRange): string {
-  if (v === undefined || Number.isNaN(v)) return '—'
+  if (v === undefined || Number.isNaN(v)) return '-'
   if (range === 'bipolar') {
     const sign = v >= 0 ? '+' : '−'
     return `${sign}${Math.round(Math.abs(v) * 100)}`
@@ -135,7 +135,7 @@ export default function Analyze() {
       setInferenceMs(Math.max(elapsed, 480))
       if (mode === 'url' && (detail.article.snippet?.trim().length ?? 0) < 120) {
         setExtractionWarning(
-          "We couldn't reliably extract the article body from that URL. The scoring below is based on whatever we got — try pasting the text directly for a stronger result.",
+          "We couldn't reliably extract the article body from that URL. The scoring below is based on whatever we got, try pasting the text directly for a stronger result.",
         )
       }
       setPendingResponse(detail)

@@ -65,7 +65,7 @@ export default function BeatTheNetworkScorecard({
 
   const [copied, setCopied] = useState(false)
   const onShare = async () => {
-    const txt = `I scored ${fmt(userScore)} vs the network's ${fmt(modelScore)} on ${gameName} — TheBiasGraph.`
+    const txt = `I scored ${fmt(userScore)} vs the network's ${fmt(modelScore)} on ${gameName}, TheBiasGraph.`
     try {
       await navigator.clipboard.writeText(txt)
       setCopied(true)

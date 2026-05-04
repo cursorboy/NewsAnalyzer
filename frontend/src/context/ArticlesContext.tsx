@@ -49,7 +49,7 @@ function saveToStorage(cache: CacheMap) {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cache))
   } catch {
-    /* storage full or disabled — skip silently */
+    /* storage full or disabled, skip silently */
   }
 }
 

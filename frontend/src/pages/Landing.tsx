@@ -150,7 +150,7 @@ function HeroSection({
           <p className="mt-6 max-w-2xl font-serif text-[20px] italic leading-[1.45] text-ink/65">
             Search any topic. A custom neural network reads each article we find,
             scores it across eight bias dimensions, and plots it on the political
-            spectrum &mdash; so you can compare framing across the press at a glance.
+            spectrum - so you can compare framing across the press at a glance.
           </p>
         </motion.div>
 
@@ -161,9 +161,10 @@ function HeroSection({
           transition={{ duration: 0.5, delay: 0.16, ease: [0.2, 0.65, 0.3, 1] }}
         >
           <p className="font-serif text-[17px] italic leading-[1.55] text-ink/70">
-            A neural network reads each article relative to how the same facts are
-            framed elsewhere &mdash; not against a fixed left/right axis. Drop in a topic
-            and watch the spread surface.
+            Type a topic. We pull recent news from across the press, run each
+            article through a custom neural network, and plot it on the spectrum
+            from far-left to far-right &mdash; so you can see who is framing
+            the story which way.
           </p>
           <form
             onSubmit={onSubmit}
@@ -511,7 +512,7 @@ function NoteSection() {
           </span>
           built this alone over eighteen months. The model is a custom DeBERTa-v3
           encoder with eight classification heads, trained on 1.24M cross-outlet
-          article pairs with a comparison-bias objective &mdash; it reads each article
+          article pairs with a comparison-bias objective - it reads each article
           relative to how the same facts are framed elsewhere, not against a fixed
           left/right axis. The whole network is yours to inspect: weights load into
           the browser, attention rolls out token by token, and every inference is

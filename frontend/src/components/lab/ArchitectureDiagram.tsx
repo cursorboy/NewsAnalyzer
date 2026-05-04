@@ -202,7 +202,7 @@ export default function ArchitectureDiagram() {
             HEADS
           </text>
 
-          {/* Dashed adversarial outlet branch — beneath the encoder */}
+          {/* Dashed adversarial outlet branch, beneath the encoder */}
           <g>
             <line
               x1={encX + encW / 2}

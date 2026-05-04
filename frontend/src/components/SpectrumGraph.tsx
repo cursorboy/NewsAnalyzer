@@ -4,7 +4,7 @@ import { SAMPLE_ARTICLES, type ArticleMarker } from '../lib/sampleArticles'
 
 // Lay out markers with organic-feeling vertical scatter. Strategy:
 // 1) Seed each marker with a pseudo-random y derived from a stable hash of its
-//    source + title — guarantees the same article always lands at the same y
+//    source + title, guarantees the same article always lands at the same y
 //    across renders, but the distribution looks like a natural scatter rather
 //    than a horizontal grid.
 // 2) Iteratively resolve collisions by nudging overlapping markers apart in y.

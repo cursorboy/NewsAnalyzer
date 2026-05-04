@@ -32,7 +32,7 @@ export const FALLBACK_ARTICLES: Article[] = [
     spectrum_score: 0.02,
     confidence: 0.95,
     method: 'outlet',
-    reasoning: 'Neutral verbs, attributed numerical detail, and balanced framing — characteristic Reuters wire copy.',
+    reasoning: 'Neutral verbs, attributed numerical detail, and balanced framing, characteristic Reuters wire copy.',
   },
   {
     id: 'fb-4',
@@ -164,7 +164,7 @@ export const FALLBACK_ARTICLES: Article[] = [
     spectrum_score: -0.02,
     confidence: 0.95,
     method: 'outlet',
-    reasoning: 'Agency report, exact figure, no editorializing — straight wire posture.',
+    reasoning: 'Agency report, exact figure, no editorializing, straight wire posture.',
   },
   {
     id: 'fb-16',
@@ -381,7 +381,7 @@ export function fallbackHeadlineScore(original: string, rewrite: string): Headli
   const rew = rewrite.trim()
 
   // Hard floor: too short or empty is auto-zero. "IDK", "n/a", "tbd",
-  // single words — none of these qualify as a rewrite of a headline.
+  // single words, none of these qualify as a rewrite of a headline.
   const wordCount = (rew.match(/\w+/g) ?? []).length
   if (!rew || wordCount < 3 || rew.length < 10) {
     return {
@@ -413,7 +413,7 @@ export function fallbackHeadlineScore(original: string, rewrite: string): Headli
     tone * 0.4 + lenScore * 0.15 + signalScore * 0.25 + distanceScore * 0.2
 
   // Faithfulness gate: if signal preservation is near zero, the answer
-  // didn't engage with the original — collapse the total.
+  // didn't engage with the original, collapse the total.
   const fidelity = Math.min(1, signalScore / 100)
   const lengthGate = 0.5 + 0.5 * (lenScore / 100)
   const gate = Math.max(0, Math.min(1, fidelity * lengthGate))

@@ -17,7 +17,7 @@ export default function MethodologyNote() {
     <section className="bg-paper-cream">
       <SectionFlag
         label="How I did it"
-        meta={`Research note &mdash; ${MODEL.version}`.replace('&mdash;', '—')}
+        meta={`Research note - ${MODEL.version}`.replace('-', '-')}
       />
 
       <div className="mt-10 md:mt-14">
@@ -33,7 +33,7 @@ export default function MethodologyNote() {
           On comparison bias.
         </h3>
         <p className="mt-3 max-w-3xl font-serif text-xl italic leading-snug text-ink/65 md:text-2xl">
-          Why a single left-right number is, frankly, useless &mdash; and what we built instead.
+          Why a single left-right number is, frankly, useless - and what we built instead.
         </p>
         <SectionRule variant="thinThick" className="mt-6" />
 
@@ -51,16 +51,16 @@ export default function MethodologyNote() {
             a curated reference corpus of{' '}
             <span className="font-semibold text-ink">10,247 hours</span> of paired coverage. For
             every story, the model sees how Reuters wrote the headline, how the AP framed the
-            lede, how MSNBC chose its verbs, and how Fox structured its quotes &mdash; then learns
+            lede, how MSNBC chose its verbs, and how Fox structured its quotes - then learns
             the latent axes along which they diverge.
           </p>
           <p className="mt-5">
             A single left-right number collapses what&rsquo;s actually four orthogonal signals
-            &mdash;{' '}
+            -{' '}
             <span className="text-ink font-semibold">economic framing</span>,{' '}
             <span className="text-ink font-semibold">social framing</span>,{' '}
             <span className="text-ink font-semibold">establishment posture</span>,{' '}
-            <span className="text-ink font-semibold">sensationalism</span> &mdash; and three
+            <span className="text-ink font-semibold">sensationalism</span> - and three
             lexical signals: <span className="text-ink font-semibold">loaded language density</span>,{' '}
             <span className="text-ink font-semibold">source diversity</span>, and the{' '}
             <span className="text-ink font-semibold">headline-body skew</span>.
@@ -68,8 +68,8 @@ export default function MethodologyNote() {
           <p className="mt-5">
             Each is its own classification head trained against the comparison corpus; the
             displayed score is a learned weighted composite of all eight. The underlying
-            architecture is a custom <SmallCaps>neural network</SmallCaps> &mdash; not a fine-tune
-            of an off-the-shelf transformer &mdash; with eight independent heads sharing a single
+            architecture is a custom <SmallCaps>neural network</SmallCaps> - not a fine-tune
+            of an off-the-shelf transformer - with eight independent heads sharing a single
             encoder.
           </p>
           <p className="mt-5">
@@ -133,7 +133,7 @@ export default function MethodologyNote() {
         <aside className="mt-10 grid gap-8 md:grid-cols-12 md:gap-10">
           <div className="md:col-span-7">
             <p className="font-serif text-xl italic leading-snug text-ink/75 md:text-2xl">
-              The architecture, the training pipeline, the labeling protocol &mdash; happy to walk
+              The architecture, the training pipeline, the labeling protocol - happy to walk
               through any of it.
             </p>
           </div>

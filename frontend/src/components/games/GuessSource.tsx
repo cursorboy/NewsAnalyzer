@@ -354,7 +354,7 @@ export default function GuessSource() {
                 <h2 className="mt-3 font-serif text-3xl md:text-4xl font-semibold leading-tight text-ink">
                   {currentArticle.title}
                 </h2>
-                {/* Use body excerpt when available — gives the player 2-3
+                {/* Use body excerpt when available, gives the player 2-3
                     paragraphs of real article text to base their guess on
                     instead of a single sentence. Falls back to snippet for
                     articles where the backend couldn't extract a body. */}
@@ -473,7 +473,7 @@ export default function GuessSource() {
                 </p>
               </article>
 
-              {/* Why-it-was-this-outlet explanation — pull from the
+              {/* Why-it-was-this-outlet explanation, pull from the
                   classifier's reasoning so the player learns each round. */}
               {currentArticle.reasoning && (
                 <aside className="border-l-[3px] border-ink pl-5">

@@ -29,7 +29,7 @@ function fallbackWhy(a: Article, idx: number): string {
 // same outlet, keep the one with the strongest signal (largest |score|) so the
 // graph shows the outlet's most distinctive take rather than a tepid one.
 function dedupeBySource(arts: Article[]): Article[] {
-  // Filter out malformed entries first — a stale localStorage cache or a
+  // Filter out malformed entries first, a stale localStorage cache or a
   // partial backend response could include nulls/undefineds, and an
   // unguarded .source access below would white-screen the whole page.
   const safe = (arts || []).filter(
@@ -121,7 +121,7 @@ export function Spectrum({ articles }: { articles: Article[] }) {
       <div className="mx-auto w-full max-w-[1280px] px-12 pt-12 pb-20">
         <div className="flex items-baseline justify-between border-b border-ink/30 pb-3">
           <span className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink/65">
-            On the Spectrum &mdash; {stats.count} clippings
+            On the Spectrum - {stats.count} clippings
           </span>
           <span className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/45">
             {stats.sources} unique outlets

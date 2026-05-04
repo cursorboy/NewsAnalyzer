@@ -2,7 +2,7 @@ const RIGHT = [
   'Nailed it.',
   'Sharp.',
   'The network agrees.',
-  'Yes — that\'s the one.',
+  'Yes, that\'s the one.',
   'Dead on.',
   'Filed perfectly.',
 ]
@@ -10,7 +10,7 @@ const RIGHT = [
 const WRONG = [
   'Way off.',
   'Not even close.',
-  'Nope — try again next round.',
+  'Nope, try again next round.',
   'The network laughs.',
   'Missed the mark.',
   'That one slipped.',
@@ -38,7 +38,7 @@ export const copy = {
   finalTie: () => 'Dead even.',
   streakTier: (n: number): string | null => {
     if (n >= 10) return 'FLAWLESS.'
-    if (n >= 5) return `ON FIRE — ${n}`
+    if (n >= 5) return `ON FIRE, ${n}`
     if (n >= 3) return `${n} IN A ROW`
     return null
   },
