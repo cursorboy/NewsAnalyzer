@@ -52,7 +52,10 @@ def _fetch_url(url: str) -> tuple[str, str]:
         return "", ""
 
     try:
-        with httpx.Client(timeout=15.0, follow_redirects=True, headers={
+        # 8s ceiling on URL body fetch. Slow paywalled / anti-bot sites take
+        # ~15-30s; we'd rather fall back to snippet than blow the function
+        # budget on a single page.
+        with httpx.Client(timeout=8.0, follow_redirects=True, headers={
             "User-Agent": "Mozilla/5.0 (compatible; NewsAnalyzer/1.0)",
         }) as client:
             r = client.get(url)
@@ -202,7 +205,16 @@ def _build_article_detail(article_id: str, title: str, body: str, url: str = "",
         loaded_t = asyncio.to_thread(detect_loaded_language, text_for_linguist)
         sd_t = asyncio.to_thread(compute_source_diversity, text_for_linguist)
         hbs_t = asyncio.to_thread(compute_headline_body_skew, title or "", body or "")
-        return await asyncio.gather(cls_t, dim_t, loaded_t, sd_t, hbs_t, return_exceptions=True)
+        # Hard 35s ceiling so the function ALWAYS returns something well within
+        # Vercel's 60s ceiling. If a slow LLM call drags past, the gather is
+        # cancelled and the caller below substitutes safe defaults — the user
+        # gets a populated (if partial) response instead of "failed to fetch".
+        gather = asyncio.gather(cls_t, dim_t, loaded_t, sd_t, hbs_t, return_exceptions=True)
+        try:
+            return await asyncio.wait_for(gather, timeout=35.0)
+        except asyncio.TimeoutError:
+            print("Debug: _build_article_detail gather hit 35s timeout — returning partial")
+            return [TimeoutError("gather timeout")] * 5
 
     results = asyncio.run(_run_all())
     classification, framing, loaded_phrases, source_diversity, headline_body_skew = results

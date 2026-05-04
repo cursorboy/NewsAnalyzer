@@ -94,7 +94,6 @@ export default function Masthead({
           ))}
         </nav>
         <div className="flex items-center gap-5">
-          <span className="text-ink/55">By NeuralBias</span>
           <Link
             to="/analyze"
             className="border border-ink px-3 py-1 text-ink hover:bg-ink hover:text-paper-cream transition-colors"

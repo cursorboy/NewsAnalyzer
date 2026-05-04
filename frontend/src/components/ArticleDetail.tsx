@@ -168,8 +168,6 @@ export default function ArticleDetail() {
             <div className="mt-6 border-t border-ink/30" aria-hidden />
 
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
-              <span>By NeuralBias</span>
-              <span aria-hidden className="text-ink/30">·</span>
               <span>Analysis Desk</span>
               {dateline && (
                 <>

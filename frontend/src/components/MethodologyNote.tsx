@@ -22,10 +22,6 @@ export default function MethodologyNote() {
 
       <div className="mt-10 md:mt-14">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
-          <span>By NeuralBias</span>
-          <span aria-hidden className="text-ink/30">&middot;</span>
-          <span>Comparison Bias Desk</span>
-          <span aria-hidden className="text-ink/30">&middot;</span>
           <span>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}</span>
         </div>
 

@@ -153,11 +153,6 @@ function HeroSection({
             <br />
             the same story.
           </h2>
-          <p className="mt-6 max-w-2xl font-serif text-[20px] italic leading-[1.45] text-ink/65">
-            Search any topic. A custom neural network reads each article we find,
-            scores it across eight bias dimensions, and plots it on the political
-            spectrum, so you can compare framing across the press at a glance.
-          </p>
         </motion.div>
 
         <motion.div
@@ -662,7 +657,6 @@ function FooterStrip() {
         TheBiasGraph &middot; {MODEL.version}
       </div>
       <div className="col-span-6 flex items-center justify-end gap-5 font-sans text-[11px] uppercase tracking-[0.22em] text-ink">
-        <span className="text-ink/55">By NeuralBias</span>
         <a
           href={MODEL.linkedinUrl}
           target="_blank"
