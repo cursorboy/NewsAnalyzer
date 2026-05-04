@@ -169,6 +169,12 @@ class handler(BaseHTTPRequestHandler):
         body = json.dumps(payload).encode()
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
+        # Disable Vercel edge caching for API responses — every search/analyze
+        # call should hit the function fresh. Without this, subsequent identical
+        # queries get a stale article list and analyze re-shows old results.
+        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        self.send_header('CDN-Cache-Control', 'no-store')
+        self.send_header('Vercel-CDN-Cache-Control', 'no-store')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
