@@ -10,6 +10,7 @@ import PlayHud from './PlayHud'
 import RoundFeedback from './RoundFeedback'
 import Countdown from './Countdown'
 import PointBurst from './PointBurst'
+import TopicChooser from './TopicChooser'
 import { useGameScore } from '../hooks/useGameScore'
 import { sfx } from '../lib/gameSound'
 import { copy } from '../lib/microcopy'
@@ -29,7 +30,7 @@ const FALLBACK_TOPICS = [
   'minimum wage',
 ]
 
-type Phase = 'menu' | 'countdown' | 'playing' | 'revealed' | 'gameOver'
+type Phase = 'menu' | 'topic' | 'countdown' | 'playing' | 'revealed' | 'gameOver'
 
 function biasLabel(score: number): string {
   if (score <= -0.7) return 'Far Left'
@@ -51,6 +52,7 @@ export default function Game() {
   const [currentArticle, setCurrentArticle] = useState<Article | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [chosenTopic, setChosenTopic] = useState<string>(searchQuery)
 
   const [dragPosition, setDragPosition] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -79,50 +81,42 @@ export default function Game() {
     return []
   }
 
-  const fetchGameArticles = async (): Promise<Article[]> => {
-    if (searchQuery) {
-      const cached = getCachedArticles(searchQuery)
+  const fetchGameArticles = async (topic: string): Promise<Article[]> => {
+    if (topic) {
+      const cached = getCachedArticles(topic)
       if (cached && cached.length > 0) {
         const processed = processArticlesForGame(cached)
         if (processed.length >= 3) return processed
       }
       try {
-        const data = await searchArticles(searchQuery)
-        cacheArticles(searchQuery, data.articles)
+        const data = await searchArticles(topic)
+        cacheArticles(topic, data.articles)
         const processed = processArticlesForGame(data.articles)
         if (processed.length >= 3) return processed
       } catch {
         /* fall through */
       }
-      return fallbackSearch(searchQuery).slice(0, TOTAL_ROUNDS)
+      return fallbackSearch(topic).slice(0, TOTAL_ROUNDS)
     }
-    const allCachedKeys = Object.keys(cachedArticles)
-    if (allCachedKeys.length > 0) {
-      const recent = allCachedKeys[allCachedKeys.length - 1]
-      const list = getCachedArticles(recent)
-      if (list && list.length > 0) {
-        const processed = processArticlesForGame(list)
-        if (processed.length >= 3) return processed
-      }
-    }
-    const topic = FALLBACK_TOPICS[Math.floor(Math.random() * FALLBACK_TOPICS.length)]
+    const fallback = FALLBACK_TOPICS[Math.floor(Math.random() * FALLBACK_TOPICS.length)]
     try {
-      const data = await searchArticles(topic)
-      cacheArticles(topic, data.articles)
+      const data = await searchArticles(fallback)
+      cacheArticles(fallback, data.articles)
       const processed = processArticlesForGame(data.articles)
       if (processed.length >= 3) return processed
     } catch {
       /* fall through */
     }
-    return fallbackSearch(topic).slice(0, TOTAL_ROUNDS)
+    return fallbackSearch(fallback).slice(0, TOTAL_ROUNDS)
   }
 
-  const startGame = async () => {
+  const startGame = async (topic: string) => {
     sfx.unlock()
+    setChosenTopic(topic)
     setLoading(true)
     setLoadError(null)
     try {
-      const list = await fetchGameArticles()
+      const list = await fetchGameArticles(topic)
       if (list.length === 0) {
         setLoadError('Could not find enough scored articles. Try again.')
         setLoading(false)
@@ -287,13 +281,12 @@ export default function Game() {
                 ← Other games
               </Link>
               <motion.button
-                onClick={startGame}
-                disabled={loading}
+                onClick={() => setPhase('topic')}
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                className="bg-accent text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-ink transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_8px_24px_-10px_rgba(185,28,28,0.6)]"
+                className="bg-accent text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-ink transition-colors inline-flex items-center gap-2 shadow-[0_8px_24px_-10px_rgba(185,28,28,0.6)]"
               >
-                {loading ? 'Loading…' : 'Begin session'} <span aria-hidden>→</span>
+                Choose topic <span aria-hidden>→</span>
               </motion.button>
             </div>
           </div>
@@ -302,6 +295,22 @@ export default function Game() {
             <p className="mt-6 font-serif text-sm italic text-accent">{loadError}</p>
           )}
         </main>
+      </div>
+    )
+  }
+
+  if (phase === 'topic') {
+    return (
+      <div className="min-h-screen bg-paper text-ink">
+        <Masthead />
+        <TopicChooser
+          gameNumber="Game 01"
+          gameName="Bias Detective"
+          initial={chosenTopic}
+          prompt="Pick a topic. We'll pull ten clippings about it and you place each one on the spectrum."
+          onPick={startGame}
+        />
+        {loadError && <p className="mx-auto max-w-3xl px-6 mt-4 font-serif italic text-accent">{loadError}</p>}
       </div>
     )
   }

@@ -315,32 +315,33 @@ function PasteSection() {
 function PlaySection() {
   return (
     <motion.section
-      className="grid grid-cols-12 gap-8 py-16 border-t border-ink/15"
+      className="py-16 border-t border-ink/15"
       initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.15 }}
       transition={{ duration: 0.5, ease: [0.2, 0.65, 0.3, 1] }}
     >
-      <div className="col-span-3">
-        <div className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink/55">
-          Department
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div>
+          <div className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink/55">
+            Department
+          </div>
+          <h3 className="mt-3 font-display font-black text-ink text-[38px] leading-[0.98] tracking-display-tight md:text-[48px]">
+            Play against the model.
+          </h3>
+          <p className="mt-3 max-w-md font-serif text-[15px] italic leading-snug text-ink/65">
+            Four short games. The model has been training; how well do you read?
+          </p>
         </div>
-        <h3 className="mt-3 font-display font-black text-ink text-[38px] leading-[0.98] tracking-display-tight">
-          Play against
-          <br />
-          the model.
-        </h3>
-        <p className="mt-3 max-w-[200px] font-serif text-[13px] italic leading-snug text-ink/60">
-          Four short games. The model has been training; how well do you read?
-        </p>
+        <span className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/35">
+          /play
+        </span>
       </div>
 
-      {GAMES.map((g) => (
-        <GameCard key={g.key} game={g} />
-      ))}
-
-      <div className="col-span-1 self-end pb-1 text-right font-sans text-[10px] uppercase tracking-[0.22em] text-ink/35">
-        /play
+      <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+        {GAMES.map((g) => (
+          <GameCard key={g.key} game={g} />
+        ))}
       </div>
     </motion.section>
   )
@@ -349,43 +350,53 @@ function PlaySection() {
 function GameCard({ game }: { game: GameDef }) {
   const [hover, setHover] = useState(false)
   return (
-    <Link
-      to={game.href}
+    <motion.div
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.2 }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className="col-span-2 block border-l border-ink/15 pl-5 group"
+      className="group relative bg-paper border-2 border-ink shadow-[5px_5px_0_rgba(17,17,17,0.9)] hover:shadow-[8px_8px_0_rgba(185,28,28,0.9)] transition-shadow"
     >
-      <div className="font-mono text-[24px] tabular-nums text-ink/55 leading-none">
-        {game.num}
-      </div>
-      <div className="mt-2 font-display font-black text-ink text-[22px] leading-[1.1] tracking-display-tight group-hover:text-accent transition-colors">
-        {game.title}
-      </div>
-      <p className="mt-2 font-serif text-[14px] leading-tight text-ink/70">
-        {game.blurb}
-      </p>
+      <Link to={game.href} className="block p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="font-display font-black text-ink/85 text-[40px] tabular-nums leading-none">
+            {game.num}
+          </div>
+        </div>
+        <div className="mt-4 font-display font-black text-ink text-[22px] leading-[1.1] tracking-display-tight group-hover:text-accent transition-colors md:text-[24px]">
+          {game.title}
+        </div>
+        <p className="mt-2 font-serif italic text-[14px] leading-snug text-ink/65">
+          {game.blurb}
+        </p>
 
-      <div className="mt-3 h-12 relative">
-        <AnimatePresence>
-          {hover && (
-            <motion.div
-              key="preview"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0"
-            >
-              <GamePreview type={game.key} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+        <div className="mt-4 h-12 relative">
+          <AnimatePresence>
+            {hover && (
+              <motion.div
+                key="preview"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.2 }}
+                className="absolute inset-0"
+              >
+                <GamePreview type={game.key} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-      <div className="mt-1 inline-block font-sans text-[11px] uppercase tracking-[0.22em] text-ink group-hover:text-accent transition-colors">
-        Play &rarr;
-      </div>
-    </Link>
+        <div className="mt-4 border-t border-ink/15 pt-4">
+          <span className="inline-flex items-center gap-2 bg-ink text-paper-cream px-4 py-2 font-sans text-[11px] uppercase tracking-[0.22em] group-hover:bg-accent transition-colors">
+            <span>Play</span>
+            <span aria-hidden className="transition-transform group-hover:translate-x-1">
+              &rarr;
+            </span>
+          </span>
+        </div>
+      </Link>
+    </motion.div>
   )
 }
 

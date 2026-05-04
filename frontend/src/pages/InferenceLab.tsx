@@ -280,6 +280,19 @@ export default function InferenceLab() {
               </p>
             </div>
           </div>
+
+          <div className="mt-10 grid grid-cols-12 gap-8">
+            <ReadingGuide
+              who="New to ML?"
+              tone="serif"
+              body="Read the big italic line in each section. That's the gist. The numbers below it are the actual machinery — feel free to skim. Nothing on this page is faked: every digit either comes back from the model or is computed from what it returned."
+            />
+            <ReadingGuide
+              who="ML reader?"
+              tone="mono"
+              body="No fixtures. Empty fields are real empty state, not pre-rendered samples. Open devtools — window.tbgInfer(text) returns the same artifacts the page renders. SHA-256 of logits is on the page so you can compare across runs."
+            />
+          </div>
         </motion.section>
 
         {/* ---------- §I + §II — Model card + Loader ---------- */}
@@ -428,6 +441,53 @@ function ScrollSection({ children }: { children: React.ReactNode }) {
   )
 }
 
+function PlainEnglish({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-4 border-l-2 border-accent/60 pl-4 py-1">
+      <div className="font-sans text-[9px] uppercase tracking-[0.28em] text-accent/85 mb-1">
+        In plain English
+      </div>
+      <p className="font-serif text-[14px] text-ink/75 leading-snug">{children}</p>
+    </div>
+  )
+}
+
+function TechNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-3 font-mono text-[11px] leading-[1.55] text-ink/55 border-t border-dotted border-ink/25 pt-2">
+      <span className="font-sans uppercase tracking-[0.22em] text-[9px] text-ink/45 mr-2">
+        for ML readers
+      </span>
+      {children}
+    </div>
+  )
+}
+
+function ReadingGuide({
+  who,
+  body,
+  tone,
+}: {
+  who: string
+  body: string
+  tone: 'serif' | 'mono'
+}) {
+  return (
+    <div className="col-span-6 border-t border-ink/20 pt-4">
+      <div className="font-sans text-[10px] uppercase tracking-[0.24em] text-accent">
+        {who}
+      </div>
+      <p
+        className={`mt-2 text-[14px] leading-snug text-ink/75 ${
+          tone === 'serif' ? 'font-serif italic' : 'font-mono'
+        }`}
+      >
+        {body}
+      </p>
+    </div>
+  )
+}
+
 function SectionHeader({ numeral, label }: { numeral: string; label: string }) {
   return (
     <div className="mb-6">
@@ -446,21 +506,23 @@ function SectionHeader({ numeral, label }: { numeral: string; label: string }) {
 function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
   const cfg = loaded?.config
   const tk = loaded?.tokenizerInfo
+  const [showRaw, setShowRaw] = useState(false)
+  const dash = '—'
   const rows: Array<[string, string]> = [
     ['Model', MODEL_ID],
-    ['Architecture', cfg ? `${cfg.modelType} · ${cfg.architectures[0] ?? 'encoder-only'}` : 'DistilBERT (encoder-only)'],
-    ['Layers · Heads', cfg ? `${cfg.numLayers} · ${cfg.numHeads}` : '6 · 12'],
-    ['Hidden dim', cfg ? String(cfg.hiddenDim) : '768'],
-    ['Intermediate dim', cfg ? String(cfg.intermediateDim) : '3072'],
-    ['Vocab', cfg ? cfg.vocabSize.toLocaleString() : '30,522'],
-    ['Max position', cfg ? String(cfg.maxPositionEmbeddings) : '512'],
-    ['Parameters', '66M'],
-    ['Tokenizer', tk ? tk.type : 'WordPiece'],
-    ['Quantization', QUANTIZED ? 'int8 · ~47 MB' : 'fp32 · ~265 MB'],
+    ['Architecture', cfg ? `${cfg.modelType} · ${cfg.architectures[0] ?? 'encoder-only'}` : dash],
+    ['Layers · Heads', cfg ? `${cfg.numLayers} · ${cfg.numHeads}` : dash],
+    ['Hidden dim', cfg ? String(cfg.hiddenDim) : dash],
+    ['Intermediate dim', cfg ? String(cfg.intermediateDim) : dash],
+    ['Vocab', cfg ? cfg.vocabSize.toLocaleString() : dash],
+    ['Max position', cfg ? String(cfg.maxPositionEmbeddings) : dash],
+    ['Tokenizer', tk ? tk.type : dash],
+    ['CLS · SEP · PAD', tk ? `${tk.clsId} · ${tk.sepId} · ${tk.padId}` : dash],
+    ['Quantization', loaded ? (QUANTIZED ? 'int8' : 'fp32') : dash],
   ]
   return (
     <div className="border-2 border-ink p-6 bg-paper">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-4">
         <div>
           <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
             distilbert-base-uncased
@@ -476,14 +538,21 @@ function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
           href={MODEL_CARD_URL}
           target="_blank"
           rel="noreferrer"
-          className="font-sans text-[11px] uppercase tracking-[0.2em] text-ink border-b border-ink pb-1 hover:text-accent hover:border-accent transition-colors"
+          className="font-sans text-[11px] uppercase tracking-[0.2em] text-ink border-b border-ink pb-1 hover:text-accent hover:border-accent transition-colors shrink-0"
         >
           View on Hugging Face &rarr;
         </a>
       </div>
-      <div
-        className="mt-6 grid grid-cols-2 gap-x-10 gap-y-1 font-mono text-[13px]"
-      >
+
+      <PlainEnglish>
+        Think of this as a recipe card. <strong>Layers</strong> are how many
+        times the network re-reads the sentence. <strong>Heads</strong> are how
+        many different "angles" it considers each pass. <strong>Hidden dim</strong>{' '}
+        is how much room each word gets to be described in. The values stay
+        blank until the model actually arrives.
+      </PlainEnglish>
+
+      <div className="mt-5 grid grid-cols-2 gap-x-10 gap-y-1 font-mono text-[13px]">
         {rows.map(([k, v]) => (
           <div
             key={k}
@@ -492,10 +561,40 @@ function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
             <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink/55">
               {k}
             </span>
-            <span className="text-ink truncate text-right tabular-nums">{v}</span>
+            <span
+              className={`truncate text-right tabular-nums ${v === dash ? 'text-ink/30' : 'text-ink'}`}
+            >
+              {v}
+            </span>
           </div>
         ))}
       </div>
+
+      {cfg && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setShowRaw((s) => !s)}
+            className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/65 border-b border-ink/30 pb-0.5 hover:text-accent hover:border-accent transition-colors"
+          >
+            {showRaw ? '— hide raw config.json' : '+ raw config.json'}
+          </button>
+          <AnimatePresence>
+            {showRaw && (
+              <motion.pre
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="mt-3 max-h-[260px] overflow-auto bg-ink text-paper-cream/85 p-3 font-mono text-[10.5px] leading-[1.55] whitespace-pre"
+              >
+                {JSON.stringify(cfg.raw, null, 2)}
+              </motion.pre>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
       <div className="mt-4 flex items-baseline justify-between font-sans text-[10px] uppercase tracking-[0.18em] text-ink/45">
         <span>Powered by transformers.js · ONNX Runtime Web</span>
         {loaded ? <span>v{loaded.transformersVersion}</span> : <span>not loaded</span>}
@@ -644,21 +743,39 @@ function TokenizerPanel({
             className="w-full bg-paper-cream border border-ink/30 p-4 font-serif italic text-[18px] text-ink leading-[1.55] resize-none focus:outline-none focus:border-ink disabled:opacity-50"
             placeholder={loaded ? 'Type something to tokenize …' : 'Load the model first.'}
           />
+          <PlainEnglish>
+            Computers don't read words — they read numbers. The tokenizer
+            chops your sentence into small pieces (a word, sometimes a
+            fragment of a word) and looks each piece up in a dictionary of{' '}
+            {loaded ? loaded.config.vocabSize.toLocaleString() : 'tens of thousands'}{' '}
+            entries. The numbers below each chip are those dictionary IDs.
+            Pieces that begin with <span className="font-mono">##</span> are
+            continuations of the previous word.
+          </PlainEnglish>
         </div>
         <div className="col-span-4 text-right pt-1">
           <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
             seq · chars · max
           </div>
           <div className="mt-1 font-mono text-[13px] tabular-nums text-ink">
-            {tokenizedPreview ? tokenizedPreview.tokens.length : 0} ·{' '}
+            {tokenizedPreview ? tokenizedPreview.tokens.length : '—'} ·{' '}
             {charCount} ·{' '}
-            {tokenizedPreview ? tokenizedPreview.tokens.length : 0}/
-            {loaded?.config.maxPositionEmbeddings ?? 512}
+            {tokenizedPreview ? tokenizedPreview.tokens.length : '—'}
+            {loaded ? `/${loaded.config.maxPositionEmbeddings}` : ''}
           </div>
           <div className="mt-3 font-serif italic text-[13px] text-ink/55">
             tokens come straight from{' '}
             <span className="not-italic font-mono text-[12px] text-ink">tokenizer(text).input_ids</span>
           </div>
+          {tokenizedPreview && loaded && (
+            <div className="mt-4 font-mono text-[10px] text-ink/50 tabular-nums leading-[1.7]">
+              [CLS]={loaded.tokenizerInfo.clsId}
+              <br />
+              [SEP]={loaded.tokenizerInfo.sepId}
+              <br />
+              [PAD]={loaded.tokenizerInfo.padId}
+            </div>
+          )}
         </div>
       </div>
       <div className="mt-6 flex flex-wrap">
@@ -673,10 +790,13 @@ function TokenizerPanel({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.12 }}
-                  className="inline-flex flex-col items-center border border-ink/30 bg-paper px-2 py-1 mr-1.5 mb-1.5 min-w-[44px]"
+                  className="inline-flex flex-col items-center border border-ink/30 bg-paper px-2 py-1 mr-1.5 mb-1.5 min-w-[48px]"
                 >
+                  <span className="font-sans text-[8px] tabular-nums text-ink/35 leading-none">
+                    pos {i}
+                  </span>
                   <span
-                    className={`font-mono text-[13px] ${
+                    className={`mt-0.5 font-mono text-[13px] ${
                       isSpecial ? 'text-accent' : 'text-ink'
                     }`}
                   >
@@ -722,9 +842,53 @@ function ForwardPassPanel({
   onRun: () => void
   onReRun: () => void
 }) {
+  const headStats = useMemo(() => {
+    if (!artifacts) return null
+    const m = artifacts.attentions[selectedLayer]?.[selectedHead]
+    if (!m) return null
+    const N = m.length
+    let entropy = 0
+    let clsCol = 0
+    let sepCol = 0
+    const sepIdx = artifacts.tokenStrings.findIndex((t) => t === '[SEP]')
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) {
+        const p = m[i][j]
+        if (p > 1e-9) entropy -= p * Math.log(p)
+      }
+      clsCol += m[i][0]
+      if (sepIdx >= 0) sepCol += m[i][sepIdx]
+    }
+    entropy /= N
+    return {
+      entropy,
+      maxEntropy: Math.log(N),
+      toCls: clsCol / N,
+      toSep: sepIdx >= 0 ? sepCol / N : null,
+      seq: N,
+    }
+  }, [artifacts, selectedLayer, selectedHead])
+
+  const pooledNorm = useMemo(() => {
+    if (!artifacts) return null
+    let s = 0
+    for (const v of artifacts.pooledCls) s += v * v
+    return Math.sqrt(s)
+  }, [artifacts])
+
   return (
     <div>
-      <div className="grid grid-cols-12 gap-8">
+      <PlainEnglish>
+        A "forward pass" is one full read of your sentence by the network. The
+        sentence enters as numbers, flows through{' '}
+        {loaded ? loaded.config.numLayers : 'several'} stacked layers, and
+        exits as a tiny vote between the model's labels. Click{' '}
+        <span className="font-mono not-italic">Run forward pass</span> and the
+        three panels below fill with what the network actually saw, attended to,
+        and decided.
+      </PlainEnglish>
+
+      <div className="mt-6 grid grid-cols-12 gap-8">
         {/* Hidden state shapes */}
         <div className="col-span-4">
           <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55 mb-2">
@@ -741,7 +905,9 @@ function ForwardPassPanel({
                   className="border-b border-ink/15 py-1.5"
                 >
                   <div className="flex items-baseline justify-between">
-                    <span className="text-ink/55">layer_{i}</span>
+                    <span className="text-ink/55">
+                      {i === 0 ? 'embed' : `layer_${i - 1}`}
+                    </span>
                     <span className="text-ink tabular-nums">
                       [{s[0]}, {s[1]}, {s[2]}]
                     </span>
@@ -752,12 +918,14 @@ function ForwardPassPanel({
                       ?.slice(0, 8)
                       .map((v) => v.toFixed(3))
                       .join(', ')}
-                    ]
+                    , …]
                   </div>
                 </motion.div>
               ))
             ) : (
-              <div className="text-ink/40">layer_0 · awaiting forward pass</div>
+              <div className="text-ink/40 font-serif italic text-[12px]">
+                Awaiting forward pass — nothing computed yet.
+              </div>
             )}
           </div>
           <div className="mt-3 font-serif italic text-[11px] text-ink/55">
@@ -769,10 +937,14 @@ function ForwardPassPanel({
         <div className="col-span-4">
           <div className="flex items-baseline justify-between mb-2 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
             <span>
-              Attention · L={selectedLayer} · H={selectedHead}
+              {artifacts
+                ? `Attention · L=${selectedLayer} · H=${selectedHead}`
+                : 'Attention · awaiting'}
             </span>
-            <span className="text-ink/40">
-              {artifacts ? `${artifacts.tokenStrings.length}×${artifacts.tokenStrings.length}` : '12×12'}
+            <span className="text-ink/40 tabular-nums">
+              {artifacts
+                ? `${artifacts.tokenStrings.length}×${artifacts.tokenStrings.length}`
+                : '—'}
             </span>
           </div>
           <AttentionGrid
@@ -786,44 +958,71 @@ function ForwardPassPanel({
               value={selectedLayer}
               onChange={(e) => setSelectedLayer(Number(e.target.value))}
               disabled={!artifacts}
-              className="border border-ink/30 bg-paper px-2 py-0.5 font-mono text-[11px] tracking-normal text-ink"
+              className="border border-ink/30 bg-paper px-2 py-0.5 font-mono text-[11px] tracking-normal text-ink disabled:opacity-50"
             >
-              {(artifacts?.attentions ?? Array.from({ length: 6 })).map((_, i) => (
-                <option key={i} value={i}>
-                  layer {i}
-                </option>
-              ))}
+              {artifacts ? (
+                artifacts.attentions.map((_, i) => (
+                  <option key={i} value={i}>
+                    layer {i}
+                  </option>
+                ))
+              ) : (
+                <option>—</option>
+              )}
             </select>
             <span className="ml-3">head</span>
             <select
               value={selectedHead}
               onChange={(e) => setSelectedHead(Number(e.target.value))}
               disabled={!artifacts}
-              className="border border-ink/30 bg-paper px-2 py-0.5 font-mono text-[11px] tracking-normal text-ink"
+              className="border border-ink/30 bg-paper px-2 py-0.5 font-mono text-[11px] tracking-normal text-ink disabled:opacity-50"
             >
-              {(artifacts?.attentions[0] ?? Array.from({ length: 12 })).map((_, i) => (
-                <option key={i} value={i}>
-                  head {i}
-                </option>
-              ))}
+              {artifacts && artifacts.attentions[0] ? (
+                artifacts.attentions[0].map((_, i) => (
+                  <option key={i} value={i}>
+                    head {i}
+                  </option>
+                ))
+              ) : (
+                <option>—</option>
+              )}
             </select>
           </div>
+          {headStats && (
+            <div className="mt-3 font-mono text-[10.5px] text-ink/65 tabular-nums leading-[1.6]">
+              <div className="flex justify-between border-b border-ink/10 py-0.5">
+                <span className="text-ink/45">H(row) · mean</span>
+                <span>
+                  {headStats.entropy.toFixed(3)} / {headStats.maxEntropy.toFixed(3)} nats
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-ink/10 py-0.5">
+                <span className="text-ink/45">→ [CLS]</span>
+                <span>{(headStats.toCls * 100).toFixed(1)}%</span>
+              </div>
+              {headStats.toSep !== null && (
+                <div className="flex justify-between py-0.5">
+                  <span className="text-ink/45">→ [SEP]</span>
+                  <span>{(headStats.toSep * 100).toFixed(1)}%</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* [CLS] sparkline + logits */}
         <div className="col-span-4">
           <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55 mb-2">
-            [CLS] pooled · 256 of {loaded?.config.hiddenDim ?? 768}
+            [CLS] pooled · {artifacts ? `bucketed 256 of ${artifacts.pooledCls.length}` : 'awaiting'}
           </div>
           <ClsSparkline values={artifacts?.pooledCls ?? null} />
           <div className="mt-2 flex justify-between font-mono text-[10px] tabular-nums text-ink/55">
             <span>
-              min{' '}
-              {artifacts ? Math.min(...artifacts.pooledCls).toFixed(3) : '—'}
+              min {artifacts ? Math.min(...artifacts.pooledCls).toFixed(3) : '—'}
             </span>
+            <span>‖h‖₂ {pooledNorm !== null ? pooledNorm.toFixed(3) : '—'}</span>
             <span>
-              max{' '}
-              {artifacts ? Math.max(...artifacts.pooledCls).toFixed(3) : '—'}
+              max {artifacts ? Math.max(...artifacts.pooledCls).toFixed(3) : '—'}
             </span>
           </div>
 
@@ -831,33 +1030,42 @@ function ForwardPassPanel({
             <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55 mb-1.5">
               Logits · softmax
             </div>
-            <div className="space-y-1.5 font-mono text-[12px]">
-              {(artifacts?.logits ?? [null, null]).map((lg, i) => {
-                const labels = loaded?.config.id2label ?? { 0: 'NEGATIVE', 1: 'POSITIVE' }
-                const label = labels[i] ?? `c${i}`
-                const prob = artifacts?.probs[i] ?? null
-                const top = artifacts ? i === artifacts.argmax : false
-                return (
-                  <div
-                    key={i}
-                    className={`flex items-baseline gap-3 border-b border-ink/10 py-1 ${
-                      top ? 'text-ink' : 'text-ink/55'
-                    }`}
-                  >
-                    <span className="font-sans w-20 uppercase tracking-[0.18em] text-[10px]">
-                      {label}
-                    </span>
-                    <span className="tabular-nums">
-                      {lg !== null ? `${lg >= 0 ? '+' : ''}${lg.toFixed(3)}` : '—'}
-                    </span>
-                    <span className="ml-auto tabular-nums">
-                      {prob !== null ? `${(prob * 100).toFixed(2)}%` : '—'}
-                    </span>
-                  </div>
-                )
-              })}
+            <div className="space-y-1.5 font-mono text-[12px] min-h-[60px]">
+              {artifacts ? (
+                artifacts.logits.map((lg, i) => {
+                  const labels = loaded?.config.id2label ?? {}
+                  const label = labels[i] ?? `class_${i}`
+                  const prob = artifacts.probs[i]
+                  const top = i === artifacts.argmax
+                  return (
+                    <div
+                      key={i}
+                      className={`flex items-baseline gap-3 border-b border-ink/10 py-1 ${
+                        top ? 'text-ink' : 'text-ink/55'
+                      }`}
+                    >
+                      <span className="font-sans w-20 uppercase tracking-[0.18em] text-[10px]">
+                        {label}
+                      </span>
+                      <span className="tabular-nums">
+                        {`${lg >= 0 ? '+' : ''}${lg.toFixed(3)}`}
+                      </span>
+                      <span className="ml-auto tabular-nums">
+                        {`${(prob * 100).toFixed(2)}%`}
+                      </span>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="text-ink/40 font-serif italic">
+                  No logits yet — run a forward pass.
+                </div>
+              )}
             </div>
-            <div className="mt-3 font-sans text-[11px] uppercase tracking-[0.18em] text-ink/55">
+            <div className="mt-3 font-mono text-[10.5px] text-ink/55">
+              p_i = e^(z_i − max z) / Σ e^(z_j − max z)
+            </div>
+            <div className="mt-1 font-sans text-[11px] uppercase tracking-[0.18em] text-ink/55">
               argmax &rarr;{' '}
               <span className="text-accent">{artifacts?.argmaxLabel ?? '—'}</span>
             </div>
@@ -896,34 +1104,31 @@ function AttentionGrid({
   selectedLayer: number
   selectedHead: number
 }) {
-  // Choose matrix; fall back to a static placeholder grid
-  const placeholderN = 12
-  const matrix = useMemo(() => {
-    if (artifacts) {
-      const m = artifacts.attentions[selectedLayer]?.[selectedHead]
-      if (m) return m
-    }
-    // diagonal-emphasized placeholder
-    const N = placeholderN
-    return Array.from({ length: N }, (_, i) =>
-      Array.from({ length: N }, (_, j) =>
-        Math.exp(-Math.abs(i - j) / 3) * 0.4 + (j === 0 ? 0.2 : 0),
-      ),
+  const matrix = artifacts
+    ? artifacts.attentions[selectedLayer]?.[selectedHead] ?? null
+    : null
+
+  if (!matrix) {
+    return (
+      <div className="border border-ink/30 bg-paper aspect-square w-full flex items-center justify-center">
+        <span className="font-serif italic text-[12px] text-ink/35 px-3 text-center leading-snug">
+          Run a forward pass — attention matrices come from{' '}
+          <span className="font-mono not-italic">model(…, output_attentions=true)</span>.
+        </span>
+      </div>
     )
-  }, [artifacts, selectedLayer, selectedHead])
+  }
 
   const N = matrix.length
-  const max = useMemo(() => {
+  const max = (() => {
     let m = 0
     for (const row of matrix) for (const v of row) if (v > m) m = v
     return m || 1
-  }, [matrix])
+  })()
 
   const center = (N - 1) / 2
   const maxRadius = Math.hypot(center, center) || 1
-
-  // animation key forces re-mount on layer/head change → radial wave plays again
-  const key = artifacts ? `${selectedLayer}-${selectedHead}` : 'placeholder'
+  const key = `${selectedLayer}-${selectedHead}`
 
   return (
     <div
@@ -946,6 +1151,7 @@ function AttentionGrid({
               animate={{ opacity: 1 }}
               transition={{ duration: 0.2, delay }}
               style={{ background: `rgba(185, 28, 28, ${intensity})` }}
+              title={`q=${i} k=${j} · ${v.toFixed(4)}`}
             />
           )
         }),
@@ -955,24 +1161,23 @@ function AttentionGrid({
 }
 
 function ClsSparkline({ values }: { values: number[] | null }) {
-  // bucket to 256 cells
+  const hasData = !!values && values.length > 0
+
   const bucketed = useMemo(() => {
-    if (!values || values.length === 0) {
-      return Array.from({ length: 256 }, () => 0)
-    }
+    if (!hasData) return [] as number[]
     const target = 256
-    if (values.length <= target) return values
+    if (values!.length <= target) return values!
     const out: number[] = []
-    const w = values.length / target
+    const w = values!.length / target
     for (let i = 0; i < target; i++) {
       const start = Math.floor(i * w)
       const end = Math.floor((i + 1) * w)
       let s = 0
-      for (let j = start; j < end; j++) s += values[j]
+      for (let j = start; j < end; j++) s += values![j]
       out.push(s / Math.max(1, end - start))
     }
     return out
-  }, [values])
+  }, [values, hasData])
 
   const max = useMemo(() => {
     let m = 1e-6
@@ -980,61 +1185,52 @@ function ClsSparkline({ values }: { values: number[] | null }) {
     return m
   }, [bucketed])
 
-  // Build a path string for animated stroke draw
   const path = useMemo(() => {
-    if (!values || values.length === 0) return 'M 0 30 L 256 30'
+    if (!hasData) return ''
     let d = ''
     bucketed.forEach((v, i) => {
       const y = 30 - (v / max) * 26
       d += `${i === 0 ? 'M' : 'L'} ${i + 0.5} ${y.toFixed(2)} `
     })
     return d.trim()
-  }, [bucketed, max, values])
+  }, [bucketed, max, hasData])
 
-  const hasData = !!values && values.length > 0
+  if (!hasData) {
+    return (
+      <div className="h-[60px] border border-dashed border-ink/20 bg-paper flex items-center justify-center">
+        <span className="font-serif italic text-[11px] text-ink/35">
+          awaiting [CLS] vector
+        </span>
+      </div>
+    )
+  }
 
   return (
     <svg viewBox="0 0 256 60" width="100%" height="60" preserveAspectRatio="none">
       <line x1="0" y1="30" x2="256" y2="30" stroke="rgba(17,17,17,0.2)" strokeWidth="0.5" />
-      {hasData ? (
-        <>
-          {bucketed.map((v, i) => {
-            const y = 30 - (v / max) * 26
-            return (
-              <line
-                key={i}
-                x1={i + 0.5}
-                y1={30}
-                x2={i + 0.5}
-                y2={y}
-                stroke="rgba(17,17,17,0.45)"
-                strokeWidth="0.7"
-              />
-            )
-          })}
-          <motion.path
-            d={path}
-            fill="none"
-            stroke="#B91C1C"
-            strokeWidth="1"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 0.8, ease: 'easeInOut' }}
-          />
-        </>
-      ) : (
-        Array.from({ length: 64 }).map((_, i) => (
+      {bucketed.map((v, i) => {
+        const y = 30 - (v / max) * 26
+        return (
           <line
             key={i}
-            x1={i * 4 + 2}
-            y1={30 - 2}
-            x2={i * 4 + 2}
-            y2={30 + 2}
-            stroke="rgba(17,17,17,0.15)"
+            x1={i + 0.5}
+            y1={30}
+            x2={i + 0.5}
+            y2={y}
+            stroke="rgba(17,17,17,0.45)"
             strokeWidth="0.7"
           />
-        ))
-      )}
+        )
+      })}
+      <motion.path
+        d={path}
+        fill="none"
+        stroke="#B91C1C"
+        strokeWidth="1"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={{ duration: 0.8, ease: 'easeInOut' }}
+      />
     </svg>
   )
 }
@@ -1057,6 +1253,15 @@ function SaliencyPanel({ artifacts }: { artifacts: InferenceArtifacts | null }) 
           A_rollout = ∏ Â_l
         </span>
       </div>
+
+      <PlainEnglish>
+        Darker words pulled more of the model's attention. We compute this by
+        multiplying every layer's attention map together — the recipe is from
+        a 2020 paper. If "reckless" or "slammed" comes back dark, that's the
+        network telling you it weighed those words heavily when forming its
+        verdict.
+      </PlainEnglish>
+
       <div className="mt-5 flex flex-wrap gap-1.5">
         {artifacts ? (
           <SaliencyChips
@@ -1131,6 +1336,14 @@ function HashesPanel({
 }) {
   return (
     <div className="space-y-4">
+      <PlainEnglish>
+        A hash is a fingerprint. Same input, same machine, same model →{' '}
+        <em>identical</em> fingerprint. We hash both the text you typed and
+        the raw numbers the model produced. Re-run a few times: the
+        fingerprint either stays put (deterministic) or drifts a hair
+        (floating-point in WebAssembly threads). Either way, you can verify
+        nothing on this page was pre-baked.
+      </PlainEnglish>
       <HashBlock label="Input · sha-256" value={inputHash} />
       <HashBlock label="Logits · sha-256" value={logitsHash} />
       <AnimatePresence>

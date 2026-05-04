@@ -9,6 +9,7 @@ import RoundFeedback from '../RoundFeedback'
 import Countdown from '../Countdown'
 import PointBurst from '../PointBurst'
 import NeuralLoader from '../NeuralLoader'
+import TopicChooser from '../TopicChooser'
 import { useGameScore } from '../../hooks/useGameScore'
 import { sfx } from '../../lib/gameSound'
 import { copy } from '../../lib/microcopy'
@@ -29,7 +30,7 @@ const TOPICS = [
   'inflation',
 ]
 
-type Phase = 'menu' | 'countdown' | 'loading-round' | 'playing' | 'revealed' | 'gameOver'
+type Phase = 'menu' | 'topic' | 'countdown' | 'loading-round' | 'playing' | 'revealed' | 'gameOver'
 type BiasedPick = 'A' | 'B' | 'Equal'
 type DirectionPick = 'Liberal' | 'Conservative' | 'Center'
 
@@ -83,6 +84,7 @@ export default function CompareTakes() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [burst, setBurst] = useState<{ show: boolean; pts: number; variant: 'correct' | 'wrong' | 'partial' }>({ show: false, pts: 0, variant: 'correct' })
+  const [chosenTopic, setChosenTopic] = useState<string>(topicQuery)
 
   const loadNextPair = async (queue: string[]): Promise<{ pair: ComparePair; remaining: string[] }> => {
     let q = queue.slice()
@@ -92,16 +94,15 @@ export default function CompareTakes() {
     return { pair: p, remaining: q }
   }
 
-  const startGame = async () => {
+  const startGame = async (topic: string) => {
     sfx.unlock()
+    setChosenTopic(topic)
     setLoading(true)
     setLoadError(null)
     try {
-      // If the user came via "Play with this query" from /search, lead with
-      // their topic. The remaining TOPICS get shuffled in afterward so the
-      // game still has variety across the 10 rounds.
-      const queue = topicQuery
-        ? [topicQuery, ...shuffle(TOPICS.filter((t) => t !== topicQuery))]
+      // Lead with chosen topic, then shuffle the broader TOPICS list for variety.
+      const queue = topic
+        ? [topic, ...shuffle(TOPICS.filter((t) => t !== topic))]
         : shuffle(TOPICS)
       const result = await loadNextPair(queue)
       setLoading(false)
@@ -217,24 +218,39 @@ export default function CompareTakes() {
                 ← Other games
               </Link>
               <motion.button
-                onClick={startGame}
-                disabled={loading}
+                onClick={() => setPhase('topic')}
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                className="bg-accent text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-ink transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_8px_24px_-10px_rgba(185,28,28,0.6)]"
+                className="bg-accent text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-ink transition-colors inline-flex items-center gap-2 shadow-[0_8px_24px_-10px_rgba(185,28,28,0.6)]"
               >
-                {loading ? 'Loading…' : 'Begin session'} <span aria-hidden>→</span>
+                Choose topic <span aria-hidden>→</span>
               </motion.button>
             </div>
           </div>
 
-          {loading && (
-            <div className="mt-10 flex justify-center">
-              <NeuralLoader label="Pairing contrasting takes" />
-            </div>
-          )}
           {loadError && <p className="mt-6 font-serif text-sm italic text-accent">{loadError}</p>}
         </main>
+      </div>
+    )
+  }
+
+  if (phase === 'topic') {
+    return (
+      <div className="min-h-screen bg-paper text-ink">
+        <Masthead />
+        <TopicChooser
+          gameNumber="Game 03"
+          gameName="Compare Two Takes"
+          initial={chosenTopic}
+          prompt="Pick a topic. We'll pull two articles on the same story from opposing-leaning outlets and you call which is more biased."
+          onPick={startGame}
+        />
+        {loading && (
+          <div className="mt-4 flex justify-center pb-16">
+            <NeuralLoader label="Pairing contrasting takes" />
+          </div>
+        )}
+        {loadError && <p className="mx-auto max-w-3xl px-6 mt-4 font-serif italic text-accent">{loadError}</p>}
       </div>
     )
   }

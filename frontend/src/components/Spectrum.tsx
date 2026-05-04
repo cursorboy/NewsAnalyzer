@@ -5,7 +5,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import SpectrumGraph from './SpectrumGraph'
 import type { ArticleMarker } from '../lib/sampleArticles'
 
-function outletCode(source: string): string {
+function outletCode(source: string | undefined | null): string {
+  if (!source || typeof source !== 'string') return 'OUT'
   const cleaned = source.replace(/[^a-zA-Z ]/g, '').trim()
   if (!cleaned) return 'OUT'
   const parts = cleaned.split(/\s+/).filter(Boolean)
@@ -28,15 +29,21 @@ function fallbackWhy(a: Article, idx: number): string {
 // same outlet, keep the one with the strongest signal (largest |score|) so the
 // graph shows the outlet's most distinctive take rather than a tepid one.
 function dedupeBySource(arts: Article[]): Article[] {
+  // Filter out malformed entries first — a stale localStorage cache or a
+  // partial backend response could include nulls/undefineds, and an
+  // unguarded .source access below would white-screen the whole page.
+  const safe = (arts || []).filter(
+    (a): a is Article => !!a && typeof a === 'object' && typeof a.title === 'string',
+  )
   const seen = new Map<string, Article>()
-  for (const a of arts) {
+  for (const a of safe) {
     const key = (a.source || 'unknown').toLowerCase()
     const existing = seen.get(key)
     if (!existing) {
       seen.set(key, a)
       continue
     }
-    if (Math.abs(a.spectrum_score) > Math.abs(existing.spectrum_score)) {
+    if (Math.abs(a.spectrum_score ?? 0) > Math.abs(existing.spectrum_score ?? 0)) {
       seen.set(key, a)
     }
   }
@@ -45,13 +52,13 @@ function dedupeBySource(arts: Article[]): Article[] {
 
 function articlesToMarkers(arts: Article[]): ArticleMarker[] {
   return arts.map((a, i) => ({
-    src: a.source,
+    src: a.source ?? 'unknown',
     short: outletCode(a.source),
-    x: Math.max(-1, Math.min(1, a.spectrum_score)),
+    x: Math.max(-1, Math.min(1, a.spectrum_score ?? 0)),
     y: 0.18 + ((i * 0.137) % 0.7),
-    title: a.title,
+    title: a.title ?? '',
     why: fallbackWhy(a, i + 1),
-    score: a.spectrum_score,
+    score: a.spectrum_score ?? 0,
     url: a.url,
   }))
 }

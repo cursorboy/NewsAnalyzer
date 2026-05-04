@@ -10,14 +10,16 @@ import RoundFeedback from '../RoundFeedback'
 import Countdown from '../Countdown'
 import PointBurst from '../PointBurst'
 import NeuralLoader from '../NeuralLoader'
+import TopicChooser from '../TopicChooser'
 import { useGameScore } from '../../hooks/useGameScore'
 import { useCountUp } from '../../hooks/useCountUp'
 import { sfx } from '../../lib/gameSound'
 import { copy } from '../../lib/microcopy'
 
 const TOTAL_ROUNDS = 10
+const MIN_ROUNDS = 5
 const STORAGE_KEY = 'headline_rewrite_best'
-const MIN_BIAS = 0.3
+const MIN_BIAS = 0.15 // Loose bias filter — accept any article that's not literally neutral.
 const SEED_QUERIES = ['us politics', 'climate change', 'immigration', 'economy', 'foreign policy']
 
 const FAUX_PROGRESS = [
@@ -29,7 +31,7 @@ const FAUX_PROGRESS = [
   'Aggregating multi-signal grade…',
 ]
 
-type Phase = 'menu' | 'countdown' | 'playing' | 'revealed' | 'gameOver'
+type Phase = 'menu' | 'topic' | 'countdown' | 'playing' | 'revealed' | 'gameOver'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = arr.slice()
@@ -115,57 +117,85 @@ export default function HeadlineRewrite() {
   const [usedMock, setUsedMock] = useState(false)
   const [roundDelta, setRoundDelta] = useState({ user: 0, model: 0 })
   const [burst, setBurst] = useState<{ show: boolean; pts: number; variant: 'correct' | 'wrong' | 'partial' }>({ show: false, pts: 0, variant: 'correct' })
+  const [chosenTopic, setChosenTopic] = useState<string>(topicQuery)
 
   const currentArticle = pool[score.currentRound - 1] ?? null
 
-  const fetchPool = async (): Promise<Article[]> => {
+  const fetchPool = async (topic: string): Promise<Article[]> => {
     const collected: Article[] = []
     const seen = new Set<string>()
-    // Honor ?q= from the URL — when the user came in via "Play with this query"
-    // from /search, that topic should drive what they're rewriting.
-    const queries = topicQuery
-      ? [topicQuery, ...SEED_QUERIES.filter((q) => q !== topicQuery)]
+    const safeAdd = (a: Article, threshold: number) => {
+      if (!a || !a.id || seen.has(a.id)) return
+      if (Math.abs(a.spectrum_score ?? 0) < threshold) return
+      seen.add(a.id)
+      collected.push(a)
+    }
+    // Lead with chosen topic; fall through to seeds for variety.
+    const queries = topic
+      ? [topic, ...SEED_QUERIES.filter((q) => q !== topic)]
       : shuffle(SEED_QUERIES)
+
+    // Pass 1: live search with strict-ish bias filter.
     for (const q of queries) {
       try {
         const data = await searchArticles(q)
-        for (const a of data.articles) {
-          if (seen.has(a.id)) continue
-          if (Math.abs(a.spectrum_score) >= MIN_BIAS) {
-            seen.add(a.id)
-            collected.push(a)
-          }
-        }
+        for (const a of data.articles ?? []) safeAdd(a, MIN_BIAS)
         if (collected.length >= TOTAL_ROUNDS) break
       } catch {
         continue
       }
     }
-    if (collected.length >= TOTAL_ROUNDS) {
-      return shuffle(collected).slice(0, TOTAL_ROUNDS)
-    }
-    for (const q of SEED_QUERIES) {
-      for (const a of fallbackSearch(q)) {
-        if (seen.has(a.id)) continue
-        if (Math.abs(a.spectrum_score) >= MIN_BIAS) {
-          seen.add(a.id)
-          collected.push(a)
-        }
+
+    // Pass 2: fallback corpus (offline-safe), same bias threshold.
+    if (collected.length < TOTAL_ROUNDS) {
+      for (const q of SEED_QUERIES) {
+        for (const a of fallbackSearch(q)) safeAdd(a, MIN_BIAS)
         if (collected.length >= TOTAL_ROUNDS) break
       }
-      if (collected.length >= TOTAL_ROUNDS) break
     }
-    return shuffle(collected).slice(0, TOTAL_ROUNDS)
+
+    // Pass 3: relaxed — drop the bias filter entirely so the game can ALWAYS
+    // start with at least MIN_ROUNDS articles. Loaded headlines are harder to
+    // come by than expected when the LLM dampens scores.
+    if (collected.length < MIN_ROUNDS) {
+      for (const q of queries) {
+        try {
+          const data = await searchArticles(q)
+          for (const a of data.articles ?? []) safeAdd(a, 0)
+          if (collected.length >= TOTAL_ROUNDS) break
+        } catch {
+          continue
+        }
+      }
+      for (const q of SEED_QUERIES) {
+        for (const a of fallbackSearch(q)) safeAdd(a, 0)
+        if (collected.length >= TOTAL_ROUNDS) break
+      }
+    }
+
+    // Pad pool to exactly TOTAL_ROUNDS so the game's round counter never
+    // outruns the available articles. If we ended up with 6 unique articles,
+    // we cycle them so the user still plays 10 rounds — they may see a
+    // headline twice, which is fine for a rewrite game.
+    let final = shuffle(collected)
+    if (final.length === 0) return []
+    while (final.length < TOTAL_ROUNDS) {
+      final = final.concat(shuffle(collected))
+    }
+    return final.slice(0, TOTAL_ROUNDS)
   }
 
-  const startGame = async () => {
+  const startGame = async (topic: string) => {
     sfx.unlock()
+    setChosenTopic(topic)
     setLoading(true)
     setLoadError(null)
     try {
-      const list = await fetchPool()
-      if (list.length < TOTAL_ROUNDS) {
-        setLoadError(`Only found ${list.length} biased headlines. Try again later.`)
+      const list = await fetchPool(topic)
+      if (list.length < MIN_ROUNDS) {
+        setLoadError(
+          `Only ${list.length} headlines available for "${topic}". Try a different topic.`,
+        )
         setLoading(false)
         return
       }
@@ -272,24 +302,39 @@ export default function HeadlineRewrite() {
                 ← Other games
               </Link>
               <motion.button
-                onClick={startGame}
-                disabled={loading}
+                onClick={() => setPhase('topic')}
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                className="bg-accent text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-ink transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_8px_24px_-10px_rgba(185,28,28,0.6)]"
+                className="bg-accent text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-ink transition-colors inline-flex items-center gap-2 shadow-[0_8px_24px_-10px_rgba(185,28,28,0.6)]"
               >
-                {loading ? 'Loading…' : 'Begin session'} <span aria-hidden>→</span>
+                Choose topic <span aria-hidden>→</span>
               </motion.button>
             </div>
           </div>
 
-          {loading && (
-            <div className="mt-10 flex justify-center">
-              <NeuralLoader label="Pulling biased headlines off the wire" />
-            </div>
-          )}
           {loadError && <p className="mt-6 font-serif text-sm italic text-accent">{loadError}</p>}
         </main>
+      </div>
+    )
+  }
+
+  if (phase === 'topic') {
+    return (
+      <div className="min-h-screen bg-paper text-ink">
+        <Masthead />
+        <TopicChooser
+          gameNumber="Game 04"
+          gameName="Headline Rewrite"
+          initial={chosenTopic}
+          prompt="Pick a topic. We'll pull biased headlines about it and you file a neutral version each round."
+          onPick={startGame}
+        />
+        {loading && (
+          <div className="mt-4 flex justify-center pb-16">
+            <NeuralLoader label="Pulling biased headlines" />
+          </div>
+        )}
+        {loadError && <p className="mx-auto max-w-3xl px-6 mt-4 font-serif italic text-accent">{loadError}</p>}
       </div>
     )
   }

@@ -10,6 +10,7 @@ import RoundFeedback from '../RoundFeedback'
 import Countdown from '../Countdown'
 import PointBurst from '../PointBurst'
 import NeuralLoader from '../NeuralLoader'
+import TopicChooser from '../TopicChooser'
 import { useGameScore } from '../../hooks/useGameScore'
 import { sfx } from '../../lib/gameSound'
 import { copy } from '../../lib/microcopy'
@@ -39,7 +40,7 @@ const PLAUSIBLE_OUTLETS = [
   'The Nation',
 ]
 
-type Phase = 'menu' | 'countdown' | 'playing' | 'revealed' | 'gameOver'
+type Phase = 'menu' | 'topic' | 'countdown' | 'playing' | 'revealed' | 'gameOver'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = arr.slice()
@@ -68,6 +69,7 @@ export default function GuessSource() {
   const [chosen, setChosen] = useState<string | null>(null)
   const [roundDelta, setRoundDelta] = useState({ user: 0, model: 0 })
   const [burst, setBurst] = useState<{ show: boolean; pts: number; variant: 'correct' | 'wrong' }>({ show: false, pts: 0, variant: 'correct' })
+  const [chosenTopic, setChosenTopic] = useState<string>(topicQuery)
 
   const currentArticle = pool[score.currentRound - 1] ?? null
   const isCorrect = !!chosen && !!currentArticle && chosen.toLowerCase() === currentArticle.source.toLowerCase()
@@ -77,56 +79,73 @@ export default function GuessSource() {
     return shuffle([currentArticle.source, ...distractors])
   }, [currentArticle])
 
-  const fetchPool = async (): Promise<Article[]> => {
-    const collected: Article[] = []
+  // Pick at most ONE article per outlet per session so each round shows a
+  // different masthead. Without this the pool is dominated by whichever
+  // outlets the search returned most heavily.
+  const dedupeBySource = (arts: Article[]): Article[] => {
     const seen = new Set<string>()
-    // Honor ?q= from the URL — when the user came in via "Play with this query"
-    // from /search, that topic should drive what they're guessing. Fall through
-    // to the broader seed queries afterward to ensure ten rounds of variety.
-    const queries = topicQuery
-      ? [topicQuery, ...SEED_QUERIES.filter((q) => q !== topicQuery)]
+    const out: Article[] = []
+    for (const a of arts) {
+      const key = a.source.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(a)
+    }
+    return out
+  }
+
+  const fetchPool = async (topic: string): Promise<Article[]> => {
+    const collected: Article[] = []
+    const seenIds = new Set<string>()
+    // Lead with the chosen topic; fall through to seeds for variety.
+    const queries = topic
+      ? [topic, ...SEED_QUERIES.filter((q) => q !== topic)]
       : shuffle(SEED_QUERIES)
     for (const q of queries) {
       try {
         const data = await searchArticles(q)
         for (const a of data.articles) {
           if (!a.source) continue
-          if (seen.has(a.id)) continue
+          if (seenIds.has(a.id)) continue
           if (PLAUSIBLE_OUTLETS.some((o) => o.toLowerCase() === a.source.toLowerCase())) {
-            seen.add(a.id)
+            seenIds.add(a.id)
             collected.push(a)
           }
         }
-        if (collected.length >= TOTAL_ROUNDS) break
+        // Stop early if we have enough unique-outlet candidates.
+        if (dedupeBySource(collected).length >= TOTAL_ROUNDS) break
       } catch {
         /* try next */
       }
     }
-    if (collected.length >= TOTAL_ROUNDS) {
-      return shuffle(collected).slice(0, TOTAL_ROUNDS)
+    let unique = dedupeBySource(collected)
+    if (unique.length >= TOTAL_ROUNDS) {
+      return shuffle(unique).slice(0, TOTAL_ROUNDS)
     }
+    // Top up from fallback corpus, still enforcing one-per-outlet.
     for (const q of SEED_QUERIES) {
       for (const a of fallbackSearch(q)) {
-        if (seen.has(a.id)) continue
+        if (seenIds.has(a.id)) continue
         if (PLAUSIBLE_OUTLETS.some((o) => o.toLowerCase() === a.source.toLowerCase())) {
-          seen.add(a.id)
+          seenIds.add(a.id)
           collected.push(a)
         }
-        if (collected.length >= TOTAL_ROUNDS) break
+        if (dedupeBySource(collected).length >= TOTAL_ROUNDS) break
       }
       if (collected.length >= TOTAL_ROUNDS) break
     }
-    return shuffle(collected).slice(0, TOTAL_ROUNDS)
+    return shuffle(dedupeBySource(collected)).slice(0, TOTAL_ROUNDS)
   }
 
-  const startGame = async () => {
+  const startGame = async (topic: string) => {
     sfx.unlock()
+    setChosenTopic(topic)
     setLoading(true)
     setLoadError(null)
     try {
-      const list = await fetchPool()
+      const list = await fetchPool(topic)
       if (list.length < TOTAL_ROUNDS) {
-        setLoadError(`Only found ${list.length} clippings with known outlets. Try again later.`)
+        setLoadError(`Only found ${list.length} clippings with known outlets. Try a different topic.`)
         setLoading(false)
         return
       }
@@ -223,24 +242,39 @@ export default function GuessSource() {
                 ← Other games
               </Link>
               <motion.button
-                onClick={startGame}
-                disabled={loading}
+                onClick={() => setPhase('topic')}
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                className="bg-accent text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-ink transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_8px_24px_-10px_rgba(185,28,28,0.6)]"
+                className="bg-accent text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-ink transition-colors inline-flex items-center gap-2 shadow-[0_8px_24px_-10px_rgba(185,28,28,0.6)]"
               >
-                {loading ? 'Loading…' : 'Begin session'} <span aria-hidden>→</span>
+                Choose topic <span aria-hidden>→</span>
               </motion.button>
             </div>
           </div>
 
-          {loading && (
-            <div className="mt-10 flex justify-center">
-              <NeuralLoader label="Pulling clippings off the wire" />
-            </div>
-          )}
           {loadError && <p className="mt-6 font-serif text-sm italic text-accent">{loadError}</p>}
         </main>
+      </div>
+    )
+  }
+
+  if (phase === 'topic') {
+    return (
+      <div className="min-h-screen bg-paper text-ink">
+        <Masthead />
+        <TopicChooser
+          gameNumber="Game 02"
+          gameName="Guess the Source"
+          initial={chosenTopic}
+          prompt="Pick a topic. We'll pull a clipping from a different outlet each round and you guess who filed it."
+          onPick={startGame}
+        />
+        {loading && (
+          <div className="mt-4 flex justify-center pb-16">
+            <NeuralLoader label="Pulling clippings off the wire" />
+          </div>
+        )}
+        {loadError && <p className="mx-auto max-w-3xl px-6 mt-4 font-serif italic text-accent">{loadError}</p>}
       </div>
     )
   }
@@ -309,8 +343,13 @@ export default function GuessSource() {
                 <h2 className="mt-3 font-serif text-3xl md:text-4xl font-semibold leading-tight text-ink">
                   {currentArticle.title}
                 </h2>
-                <p className="mt-4 font-serif text-base md:text-lg text-ink/75 leading-relaxed">
+                {/* Lede + body excerpt — give the player real material to read,
+                    not just the headline. */}
+                <p className="mt-5 font-serif text-[17px] md:text-[19px] text-ink/85 leading-[1.7] first-letter:font-display first-letter:font-black first-letter:text-[58px] first-letter:leading-[0.85] first-letter:float-left first-letter:mr-2 first-letter:mt-1">
                   {currentArticle.snippet}
+                </p>
+                <p className="mt-2 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/45">
+                  Read the full text · then call the desk
                 </p>
               </article>
 
@@ -396,7 +435,23 @@ export default function GuessSource() {
                 <h2 className="mt-3 font-serif text-3xl md:text-4xl font-semibold leading-tight text-ink">
                   {currentArticle.title}
                 </h2>
+                <p className="mt-4 font-serif italic text-[16px] md:text-[18px] text-ink/75 leading-[1.65]">
+                  {currentArticle.snippet}
+                </p>
               </article>
+
+              {/* Why-it-was-this-outlet explanation — pull from the
+                  classifier's reasoning so the player learns each round. */}
+              {currentArticle.reasoning && (
+                <aside className="border-l-[3px] border-ink pl-5">
+                  <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+                    Why this desk
+                  </p>
+                  <p className="mt-2 font-serif text-[15px] md:text-[17px] italic text-ink/85 leading-[1.6]">
+                    {currentArticle.reasoning}
+                  </p>
+                </aside>
+              )}
 
               <section className="grid grid-cols-3 border-t border-l border-ink/15">
                 <div className="border-r border-b border-ink/15 p-5">
@@ -417,12 +472,22 @@ export default function GuessSource() {
                 </div>
               </section>
 
-              <div className="flex items-center justify-end border-t border-ink/15 pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-t border-ink/15 pt-6">
+                {currentArticle.url && (
+                  <a
+                    href={currentArticle.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex items-center gap-2 border-b-2 border-ink/40 hover:border-ink pb-1 font-sans text-[11px] uppercase tracking-[0.22em] text-ink/70 hover:text-ink transition-colors"
+                  >
+                    Read the full article <span aria-hidden>↗</span>
+                  </a>
+                )}
                 <motion.button
                   onClick={advance}
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.96 }}
-                  className="bg-ink text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-accent transition-colors inline-flex items-center gap-2"
+                  className="ml-auto bg-ink text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-accent transition-colors inline-flex items-center gap-2"
                 >
                   {score.currentRound >= TOTAL_ROUNDS ? 'See scorecard' : 'Next round'} <span aria-hidden>→</span>
                 </motion.button>

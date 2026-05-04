@@ -131,11 +131,10 @@ export default function PlayHub() {
           </div>
         )}
 
-        {/* 2x2 game grid */}
-        <section className="mt-14 grid grid-cols-1 md:grid-cols-2 border-t-2 border-ink">
-          {GAMES.map((g, i) => {
+        {/* 2x2 game grid — white-box cards with depth and clear separation */}
+        <section className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+          {GAMES.map((g) => {
             const best = bests[g.storageKey] ?? 0
-            const isRightCol = i % 2 === 1
             const href = incomingQuery
               ? `${g.href}?q=${encodeURIComponent(incomingQuery)}`
               : g.href
@@ -144,7 +143,6 @@ export default function PlayHub() {
                 key={g.href}
                 game={{ ...g, href }}
                 best={best}
-                bordered={isRightCol}
               />
             )
           })}
@@ -170,70 +168,69 @@ export default function PlayHub() {
 function GameCard({
   game,
   best,
-  bordered,
 }: {
   game: GameCardData
   best: number
-  bordered: boolean
 }) {
   const [hover, setHover] = useState(false)
   return (
-    <Link
-      to={game.href}
+    <motion.div
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.2 }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      className={`group relative block border-b border-ink/15 p-8 md:p-10 hover:bg-ink/[0.025] transition-colors ${
-        bordered ? 'md:border-l md:border-ink/15' : ''
-      }`}
+      className="group relative bg-paper border-2 border-ink shadow-[6px_6px_0_rgba(17,17,17,0.9)] hover:shadow-[10px_10px_0_rgba(185,28,28,0.9)] transition-shadow"
     >
-      <div className="flex items-start justify-between gap-6">
-        <span className="font-display font-black text-ink/30 text-[44px] tabular-nums leading-none">
-          {game.number}
-        </span>
-        <span className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/45 tabular-nums">
-          Best {fmtBest(best)}
-        </span>
-      </div>
-
-      <h2 className="mt-5 font-display font-black text-ink text-[28px] leading-[1.05] tracking-display-tight group-hover:text-accent transition-colors md:text-[32px]">
-        {game.title}
-      </h2>
-      <p className="mt-2 font-serif italic text-[15px] text-ink/65">
-        {game.blurb}
-      </p>
-
-      <p className="mt-5 max-w-md font-serif text-[15px] leading-relaxed text-ink/75">
-        {game.description}
-      </p>
-
-      {/* Animated preview slot */}
-      <div className="mt-6 h-12 relative">
-        <AnimatePresence>
-          {hover && (
-            <motion.div
-              key={`preview-${game.key}`}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.22 }}
-              className="absolute inset-0"
-            >
-              <GamePreview type={game.key} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div className="mt-5 flex items-baseline justify-between font-sans text-[11px] uppercase tracking-[0.22em]">
-        <span className="text-ink/45">{game.rule}</span>
-        <span className="inline-flex items-center gap-2 text-ink group-hover:text-accent transition-colors">
-          <span>Play</span>
-          <span aria-hidden className="transition-transform group-hover:translate-x-1">
-            &rarr;
+      <Link to={game.href} className="block p-8 md:p-10">
+        <div className="flex items-start justify-between gap-6">
+          <span className="font-display font-black text-ink/85 text-[56px] tabular-nums leading-none">
+            {game.number}
           </span>
-        </span>
-      </div>
-    </Link>
+          <span className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/45 tabular-nums border border-ink/20 px-2 py-0.5">
+            Best {fmtBest(best)}
+          </span>
+        </div>
+
+        <h2 className="mt-5 font-display font-black text-ink text-[32px] leading-[1.05] tracking-display-tight group-hover:text-accent transition-colors md:text-[36px]">
+          {game.title}
+        </h2>
+        <p className="mt-2 font-serif italic text-[15px] text-ink/65">
+          {game.blurb}
+        </p>
+
+        <p className="mt-5 max-w-md font-serif text-[15px] leading-relaxed text-ink/75">
+          {game.description}
+        </p>
+
+        {/* Animated preview slot */}
+        <div className="mt-6 h-12 relative">
+          <AnimatePresence>
+            {hover && (
+              <motion.div
+                key={`preview-${game.key}`}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.22 }}
+                className="absolute inset-0"
+              >
+                <GamePreview type={game.key} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="mt-7 flex items-center justify-between border-t border-ink/15 pt-5">
+          <span className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/45">{game.rule}</span>
+          <span className="inline-flex items-center gap-2 bg-ink text-paper-cream px-5 py-2.5 font-sans text-[11px] uppercase tracking-[0.22em] group-hover:bg-accent transition-colors">
+            <span>Play</span>
+            <span aria-hidden className="transition-transform group-hover:translate-x-1">
+              &rarr;
+            </span>
+          </span>
+        </div>
+      </Link>
+    </motion.div>
   )
 }
 
