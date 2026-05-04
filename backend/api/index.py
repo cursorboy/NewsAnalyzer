@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 # Add the parent directory to sys.path to import from app
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from app.services.google import search_news, get_api_status
+from app.services.search import search_news, get_api_status
 from app.services.classifier import classify_with_ai, classify_by_outlet, classify_hybrid, extract_domain
 from app.services.linguistic import (
     detect_loaded_language,
@@ -52,16 +52,42 @@ def _fetch_url(url: str) -> tuple[str, str]:
 
     try:
         soup = BeautifulSoup(html, "html.parser")
-        for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+        # Strip noise that pollutes body extraction
+        for tag in soup(["script", "style", "nav", "footer", "header", "aside",
+                          "form", "iframe", "noscript", "figure", "figcaption"]):
             tag.decompose()
+
         title = (soup.title.string if soup.title and soup.title.string else "") or ""
         og = soup.find("meta", property="og:title")
         if og and og.get("content"):
             title = og["content"]
-        article = soup.find("article")
-        body_root = article if article else soup.body or soup
-        paragraphs = [p.get_text(" ", strip=True) for p in body_root.find_all("p")]
-        body = "\n\n".join(p for p in paragraphs if p)
+
+        # Prefer <article>, then common article containers, then body.
+        body_root = (
+            soup.find("article")
+            or soup.find(attrs={"role": "article"})
+            or soup.find("main")
+            or soup.find(attrs={"itemprop": "articleBody"})
+            or soup.body
+            or soup
+        )
+
+        # Take ONLY the lede + first 3 substantive paragraphs.
+        # Bias signal (framing, loaded verbs, first-quote choice) is concentrated
+        # in the opening — middle-of-article factual content dilutes it.
+        # Skip very short paragraphs (likely captions, datelines, "Updated 2:14 PM" tags).
+        MIN_PARAGRAPH_CHARS = 80
+        MAX_PARAGRAPHS = 4  # lede + first 3
+        kept: list[str] = []
+        for p in body_root.find_all("p"):
+            text = p.get_text(" ", strip=True)
+            if len(text) < MIN_PARAGRAPH_CHARS:
+                continue
+            kept.append(text)
+            if len(kept) >= MAX_PARAGRAPHS:
+                break
+
+        body = "\n\n".join(kept)
         return title.strip(), body.strip()
     except Exception:
         return "", ""
@@ -348,9 +374,10 @@ class handler(BaseHTTPRequestHandler):
                 return_exceptions=False,
             )
 
-            # Keep snippet as fallback when body extraction yields nothing useful.
-            # Cap body at 4000 chars to keep LLM input bounded.
-            BODY_CAP = 4000
+            # Use lede + first 3 paragraphs only — bias signal lives in the opening.
+            # Hard cap at 1500 chars (~375 tokens) keeps LLM input focused on framing
+            # rather than mid-article factual content that dilutes the score.
+            BODY_CAP = 1500
             BODY_MIN = 200  # less than this → not worth using, fall back to snippet
             classify_inputs = []
             for art, (fetched_title, fetched_body) in zip(article_data, fetched):

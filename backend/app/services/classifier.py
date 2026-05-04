@@ -206,19 +206,21 @@ def _build_prompt(title: str, snippet: str, source: str, prior: float | None = N
     return f"""
 Score this article for US political bias on -1.0 (far left) to +1.0 (far right). 0.0 is reserved for true wire-service neutrality (AP/Reuters style). Most articles are NOT 0.0.
 
-ARTICLE TITLE: {title}
-ARTICLE SNIPPET: {snippet}
+The text below is the article's HEADLINE + LEDE (first paragraphs). This is the section where editorial framing is most concentrated — leading verbs, first-quote choice, adjectives applied to political actors. Score based on the framing decisions visible HERE, not on what a longer article might say.
+
+HEADLINE: {title}
+LEDE: {snippet}
 SOURCE: {source}
 {prior_block}
 {_FEW_SHOT}
 
-Now score this article. In your reasoning, cite at least TWO specific words, phrases, or framing choices from the title or snippet that pushed the score in the direction you chose. Be specific.
+Now score this article. In your reasoning, cite at least TWO specific words, phrases, or framing choices from the headline or lede that pushed the score in the direction you chose. Quote them directly. Be specific — generic reasoning like "the article seems balanced" is not acceptable.
 
 Respond in this exact JSON format:
 {{
     "bias_score": <float between -1.0 and 1.0>,
     "confidence": <float between 0.0 and 1.0>,
-    "reasoning": "<2-4 sentences citing specific words/framings from the article>"
+    "reasoning": "<2-4 sentences citing specific words/framings from the headline or lede>"
 }}
 """
 

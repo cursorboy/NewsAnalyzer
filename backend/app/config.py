@@ -9,7 +9,12 @@ class Settings(BaseSettings):
     # External APIs
     google_api_key: str | None = None
     google_cse_id: str | None = None
+    brave_api_key: str | None = None
     openai_api_key: str | None = None
+
+    # Search provider: "brave" (default, indexes whole web) or "google"
+    # (legacy Custom Search, requires per-site allow list).
+    search_provider: str = "brave"
 
     # Data stores
     database_url: str | None = None
