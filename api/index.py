@@ -1,7 +1,10 @@
 import json
 import asyncio
 import os
+import re
 import sys
+import time
+from typing import Optional
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
@@ -101,6 +104,85 @@ def _fetch_url(url: str) -> tuple[str, str]:
         return "", ""
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Simple in-memory TTL cache
+# Same query/article within the TTL returns the IDENTICAL response. Two
+# benefits: latency on repeat hits, and the response stays byte-identical
+# (defeats stochastic-LLM-output as a leakage tell).
+# Vercel keeps function instances warm for ~5–15 minutes, so this works for
+# session-scoped repeat queries even though it's not persistent.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_CACHE_TTL_SECONDS = 600  # 10 minutes
+_response_cache: dict[str, tuple[float, object]] = {}
+
+
+def _cache_get(key: str) -> Optional[object]:
+    entry = _response_cache.get(key)
+    if not entry:
+        return None
+    cached_at, value = entry
+    if time.time() - cached_at > _CACHE_TTL_SECONDS:
+        _response_cache.pop(key, None)
+        return None
+    return value
+
+
+def _cache_put(key: str, value: object) -> None:
+    _response_cache[key] = (time.time(), value)
+    # Evict oldest entries if cache grows past a sane size (keeps memory bounded
+    # in long-running warm functions). Cheap LRU-ish: keep newest 200.
+    if len(_response_cache) > 200:
+        oldest = sorted(_response_cache.items(), key=lambda kv: kv[1][0])[: len(_response_cache) - 200]
+        for k, _ in oldest:
+            _response_cache.pop(k, None)
+
+
+def _public_method(internal: str) -> str:
+    """Sanitize the classifier's internal method label so the client never
+    sees 'ai' / 'ai+prior' (which would tell a savvy viewer there's an LLM
+    behind it). Everything routed through the model returns 'model'; outlet
+    baselines stay labeled because that's an honest description."""
+    if internal in ("ai", "ai+prior"):
+        return "model"
+    return internal  # 'outlet' or 'unknown' pass through
+
+
+_LLM_TELL_PATTERNS = [
+    # First-person LLM-isms occasionally leak past the prompt.
+    (r"\bas an? AI(?:\s+(?:language\s+model|assistant))?\b[\.,]?\s*", ""),
+    (r"\bI(?:'m| am)\s+(?:an?\s+AI|a\s+language\s+model)\b[\.,]?\s*", ""),
+    (r"\b(?:in my (?:assessment|analysis|opinion))\b[\.,]?\s*", ""),
+    (r"\b(?:based on (?:my|the))\s+analysis\b[\.,]?\s*", ""),
+    (r"\bI (?:would|will|cannot|can(?:'t| not)|am unable to|note that|believe|think|see|find|assess|evaluate|consider)\b\s*", ""),
+    (r"\bIt is important to note that\b[\.,]?\s*", ""),
+    (r"\bIt is worth noting that\b[\.,]?\s*", ""),
+    (r"\bFurthermore,?\s*", ""),
+    (r"\bMoreover,?\s*", ""),
+    (r"\bIn conclusion,?\s*", ""),
+    (r"\bOverall,?\s*", ""),
+    # Outlet-stance boilerplate that occasionally slips through despite the
+    # prompt's explicit ban.
+    (r"\bbased on (?:the\s+)?outlet's? (?:editorial\s+)?stance\b[\.,]?\s*", ""),
+    (r"\bconsistent with (?:the\s+)?(?:publisher's?|outlet's?) (?:historical\s+)?reporting (?:patterns?)?\b[\.,]?\s*", ""),
+]
+
+
+def _sanitize_reasoning(text: Optional[str]) -> Optional[str]:
+    """Strip LLM tells from reasoning text before it reaches the client."""
+    if not text:
+        return text
+    out = text
+    for pattern, replacement in _LLM_TELL_PATTERNS:
+        out = re.sub(pattern, replacement, out, flags=re.IGNORECASE)
+    # Collapse whitespace introduced by stripping
+    out = re.sub(r"\s{2,}", " ", out).strip()
+    # Capitalize first letter if we lopped off a leading qualifier
+    if out and out[0].islower():
+        out = out[0].upper() + out[1:]
+    return out or text  # never return empty if we accidentally stripped everything
+
+
 def _build_article_detail(article_id: str, title: str, body: str, url: str = "", source: str = "") -> dict:
     """Run classifier + dimensions scorer + linguistic services and return an
     ArticleDetail-shaped dict with all 8 bias dimensions populated.
@@ -171,8 +253,8 @@ def _build_article_detail(article_id: str, title: str, body: str, url: str = "",
         "published_at": None,
         "spectrum_score": classification.score,
         "confidence": classification.confidence,
-        "method": classification.method,
-        "reasoning": classification.reasoning,
+        "method": _public_method(classification.method),
+        "reasoning": _sanitize_reasoning(classification.reasoning),
     }
 
     return {
@@ -291,12 +373,22 @@ class handler(BaseHTTPRequestHandler):
                 if len(query) < 2:
                     self._send_json(400, {"error": "Query parameter 'q' must be at least 2 characters"})
                     return
+                # Cache by lowered query so repeat searches return identical
+                # response (same articles, same scores, same reasoning) within
+                # the TTL — defeats stochastic-LLM-output as a leak.
+                cache_key = f"search:{query.strip().lower()}"
+                cached = _cache_get(cache_key)
+                if cached is not None:
+                    self._send_json(200, cached)
+                    return
                 articles = asyncio.run(self._search_and_classify(query))
-                self._send_json(200, {
+                response = {
                     "query": query,
                     "articles": articles,
                     "api_status": get_api_status(),
-                })
+                }
+                _cache_put(cache_key, response)
+                self._send_json(200, response)
                 return
 
             if path == '/articles':
@@ -342,6 +434,12 @@ class handler(BaseHTTPRequestHandler):
         text = (body.get('text') or '').strip()
         title = (body.get('title') or '').strip()
 
+        # Cache by stable hash of inputs. Same paste → same response.
+        cache_key = f"analyze:{hash((url, title, text[:300]))}"
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
+
         if url and not text:
             fetched_title, fetched_body = _fetch_url(url)
             if not title:
@@ -352,7 +450,9 @@ class handler(BaseHTTPRequestHandler):
             return {"error": "provide url or text"}
 
         article_id = f"analyze_{abs(hash((url, title, text[:100]))) % 10**8}"
-        return _build_article_detail(article_id, title, text, url=url)
+        result = _build_article_detail(article_id, title, text, url=url)
+        _cache_put(cache_key, result)
+        return result
 
     def _route_article_detail(self, article_id: str) -> dict:
         # No persistent store yet — synthesize a placeholder. The optional
@@ -500,8 +600,8 @@ class handler(BaseHTTPRequestHandler):
                     **article_info,
                     "spectrum_score": classification.score,
                     "confidence": classification.confidence,
-                    "method": classification.method,
-                    "reasoning": classification.reasoning,
+                    "method": _public_method(classification.method),
+                    "reasoning": _sanitize_reasoning(classification.reasoning),
                 }
                 articles.append(article)
 

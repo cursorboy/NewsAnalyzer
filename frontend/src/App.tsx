@@ -55,7 +55,7 @@ class RouteErrorBoundary extends Component<
             </h1>
             <p className="mt-4 font-serif italic text-[16px] text-ink/70 leading-snug">
               Open devtools (Cmd+Opt+I) and check the console for the full trace.
-              The most common cause is a stale build cached by the browser - a
+              The most common cause is a stale build cached by the browser. A
               hard refresh (Cmd+Shift+R) usually fixes it.
             </p>
             <pre className="mt-6 bg-ink text-paper-cream/85 p-4 font-mono text-[11px] leading-[1.55] whitespace-pre-wrap break-words border border-ink">

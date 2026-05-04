@@ -230,7 +230,7 @@ export default function Analyze() {
                   <span className="ml-auto pb-3 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/45">
                     {mode === 'paste'
                       ? `${estimateTokens(text).toLocaleString()} tokens (est.)`
-                      : 'Server-side extraction'}
+                      : 'Server side extraction'}
                   </span>
                 </div>
 

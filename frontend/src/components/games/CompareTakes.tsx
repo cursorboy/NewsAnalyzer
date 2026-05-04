@@ -242,7 +242,7 @@ export default function CompareTakes() {
           gameNumber="Game 03"
           gameName="Compare Two Takes"
           initial={chosenTopic}
-          prompt="Pick a topic. We'll pull two articles on the same story from opposing-leaning outlets and you call which is more biased."
+          prompt="Pick a topic. We'll pull two articles on the same story from opposing leaning outlets and you call which is more biased."
           onPick={startGame}
           loading={loading}
         />

@@ -49,23 +49,23 @@ const API_BASE =
   import.meta.env.VITE_API_BASE ||
   (import.meta.env.PROD ? RUNTIME_ORIGIN : 'http://localhost:8000')
 
-// Debug logging
-console.log('🔍 API Configuration:', {
-  VITE_API_BASE: import.meta.env.VITE_API_BASE,
-  PROD: import.meta.env.PROD,
-  API_BASE,
-  NODE_ENV: import.meta.env.NODE_ENV
-})
+// Debug logging , only in dev. Production is silent so the API layer doesn't
+// draw attention or expose internal config.
+if (import.meta.env.DEV) {
+  console.log('🔍 API Configuration:', {
+    VITE_API_BASE: import.meta.env.VITE_API_BASE,
+    PROD: import.meta.env.PROD,
+    API_BASE,
+    NODE_ENV: import.meta.env.NODE_ENV,
+  })
+}
 
 export async function searchArticles(query: string, signal?: AbortSignal): Promise<SearchResponse> {
   const url = new URL('/api/search', API_BASE)
   url.searchParams.set('q', query)
-  
-  console.log('🌐 Making API request to:', url.toString())
-  
+
   try {
     const res = await fetch(url.toString(), { signal })
-    console.log('📡 API Response:', { status: res.status, statusText: res.statusText, url: url.toString() })
     if (!res.ok) {
       throw new Error(`Search failed: ${res.status} ${res.statusText}`)
     }
@@ -74,14 +74,14 @@ export async function searchArticles(query: string, signal?: AbortSignal): Promi
     if (error instanceof Error && error.name === 'AbortError') {
       throw error
     }
-    console.error('Search API error:', error)
+    if (import.meta.env.DEV) console.error('Search API error:', error)
     throw new Error('Failed to search articles. Please try again.')
   }
 }
 
 export async function getAPIStatus(): Promise<APIStatus> {
   const url = new URL('/api/api-status', API_BASE)
-  
+
   try {
     const res = await fetch(url.toString())
     if (!res.ok) {
@@ -89,10 +89,11 @@ export async function getAPIStatus(): Promise<APIStatus> {
     }
     return res.json()
   } catch (error) {
-    console.error('API status check error:', error)
+    if (import.meta.env.DEV) console.error('API status check error:', error)
     throw new Error('Failed to check API status.')
   }
-} 
+}
+
 
 // 72-hour prototype types and clients
 export type BiasDimensions = {

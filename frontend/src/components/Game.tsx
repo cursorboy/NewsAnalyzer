@@ -387,7 +387,7 @@ export default function Game() {
                 </div>
                 <div className="flex items-baseline justify-between gap-3 pt-3">
                   <p className="font-sans text-[10px] uppercase tracking-[0.28em] text-ink/65">
-                    Clipping - Source Withheld
+                    Clipping · Source Withheld
                   </p>
                   <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink/45">
                     Round {score.currentRound} / {TOTAL_ROUNDS}

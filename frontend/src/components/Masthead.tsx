@@ -37,7 +37,7 @@ export default function Masthead({
       {/* Nameplate row */}
       <div className="px-12 pt-8 pb-5">
         <div className="grid grid-cols-12 items-end gap-6">
-          {/* Left col-3 — byline */}
+          {/* Left col-3 , byline */}
           <div className="col-span-3 flex flex-col gap-1 pb-1 font-sans text-[11px] uppercase tracking-[0.22em] text-ink/65">
             <span>Made by Piam Parekh</span>
             <span className="text-ink/45 normal-case tracking-normal font-serif italic text-[12px]">
@@ -58,7 +58,7 @@ export default function Masthead({
             </p>
           </Link>
 
-          {/* Right col-3 — model status */}
+          {/* Right col-3 , model status */}
           <div className="col-span-3 flex flex-col items-end gap-2 pb-1 text-right">
             <ModelBadge />
             <span className="inline-flex items-center gap-2 font-sans text-[10px] uppercase tracking-[0.22em] text-emerald-700">

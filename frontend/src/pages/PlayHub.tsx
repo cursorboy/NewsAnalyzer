@@ -58,7 +58,7 @@ const GAMES: GameCardData[] = [
       'Take a loaded headline and file a neutral version. The network grades you on tone, distance, and signal.',
     href: '/play/rewrite',
     storageKey: 'headline_rewrite_best',
-    rule: 'Ten rounds · multi-signal score · brevity counts',
+    rule: 'Ten rounds · multi signal score · brevity counts',
     key: 'rewrite',
   },
 ]
@@ -110,7 +110,7 @@ export default function PlayHub() {
           <div className="col-span-12 md:col-span-5 md:border-l md:border-ink/20 md:pl-10">
             <p className="font-serif italic text-[18px] leading-[1.55] text-ink/70 md:text-[19px]">
               Four short games. The model has been training; how well do you read?
-              Each session is ten rounds - you, against TheBiasGraph v2.
+              Each session is ten rounds: you, against TheBiasGraph v2.
             </p>
             <div className="mt-5 flex items-center gap-3">
               <span className="block h-px w-10 bg-ink/40" aria-hidden />

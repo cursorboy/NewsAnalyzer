@@ -46,7 +46,7 @@ const FAUX_PROGRESS = [
   'Scanning for loaded language…',
   'Measuring entailment to original…',
   'Weighting hedging signals…',
-  'Aggregating multi-signal grade…',
+  'Aggregating multi signal grade…',
 ]
 
 type Phase = 'menu' | 'topic' | 'countdown' | 'playing' | 'revealed' | 'gameOver'
@@ -318,7 +318,7 @@ export default function HeadlineRewrite() {
             {[
               { k: 'Read', v: 'Original headline + snippet.' },
               { k: 'Rewrite', v: 'Same facts, neutral tone.' },
-              { k: 'Score', v: 'Multi-signal grade per round.' },
+              { k: 'Score', v: 'Multi signal grade per round.' },
             ].map((row) => (
               <div key={row.k} className="border-r border-b border-ink/15 p-5">
                 <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">{row.k}</p>
@@ -553,7 +553,7 @@ export default function HeadlineRewrite() {
                       className="mt-6 border-l-2 border-ink/40 pl-5 py-1"
                     >
                       <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
-                        Ideal example · wire-service tone
+                        Ideal example · wire service tone
                       </p>
                       <h3 className="mt-2 font-serif italic text-xl md:text-2xl text-ink/85 leading-snug">
                         {ideal}

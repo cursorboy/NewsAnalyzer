@@ -252,7 +252,7 @@ export default function InferenceLab() {
     } catch (err) {
       const msg = (err as Error).message || 'unknown error'
       setRunError(msg)
-      pushLoader('error', `ERROR · re-run · ${msg}`)
+      pushLoader('error', `ERROR · rerun · ${msg}`)
     } finally {
       setRunning(false)
     }
@@ -301,9 +301,9 @@ export default function InferenceLab() {
                 from those weights running on your machine.
               </p>
               <p className="mt-4 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
-                This page loads valurank/distilroberta-bias, a public 67M-param
-                model. The production TheBiasGraph runs a custom 139M-param
-                DeBERTa-v3 with 8 task heads, server-side. Different model,
+                This page loads valurank/distilroberta-bias, a public 67M param
+                model. The production TheBiasGraph runs a custom 139M param
+                DeBERTa-v3 with 8 task heads, server side. Different model,
                 same architectural family, full transparency about which is
                 which.
               </p>
@@ -319,7 +319,7 @@ export default function InferenceLab() {
             <ReadingGuide
               who="ML reader?"
               tone="mono"
-              body="DistilRoBERTa fine-tuned on WNC (Recasens 2013 / Pryzant 2020 corpus). ONNX int8, ~82 MB. Token importance via leave-one-out occlusion (mask each non-special token, Δp_argmax). Logits + SHA-256 hashes on page. window.tbgInfer(text) returns the same artifacts."
+              body="DistilRoBERTa fine tuned on WNC (Recasens 2013 / Pryzant 2020 corpus). ONNX int8, ~82 MB. Token importance via leave one out occlusion (mask each non special token, Δp_argmax). Logits + SHA256 hashes on page. window.tbgInfer(text) returns the same artifacts."
             />
           </div>
         </motion.section>
@@ -336,22 +336,22 @@ export default function InferenceLab() {
                   Same family. Different weights.
                 </h3>
                 <p className="mt-5 font-serif text-[16px] leading-[1.65] text-ink/80">
-                  Production TheBiasGraph runs a custom 139M-parameter
-                  DeBERTa-v3 fine-tune with eight task heads and an adversarial
-                  outlet-invariance branch, trained on 1.2M cross-outlet
-                  article pairs. It lives server-side on a Modal endpoint
+                  Production TheBiasGraph runs a custom 139M parameter
+                  DeBERTa-v3 fine tune with eight task heads and an adversarial
+                  outlet invariance branch, trained on 1.2M cross outlet
+                  article pairs. It lives server side on a Modal endpoint
                   because the unquantised checkpoint is 530 MB and we don't
                   want every visitor downloading it.
                 </p>
                 <p className="mt-3 font-serif text-[16px] leading-[1.65] text-ink/80">
-                  This page loads a 67M-param companion - public DistilRoBERTa
-                  fine-tuned on Wikipedia neutrality edits<Link
+                  This page loads a 67M param companion: public DistilRoBERTa
+                  fine tuned on Wikipedia neutrality edits<Link
                     to="/how-i-built-this#sec-4"
                     className="ml-1 font-sans text-[10px] uppercase tracking-[0.18em] text-ink border-b border-ink/40 hover:text-accent hover:border-accent"
                   >
                     [4]
-                  </Link>{' '}
-                  - so you can watch a real transformer chew on text in your
+                  </Link>
+                  , so you can watch a real transformer chew on text in your
                   browser with no server in the loop. Same architectural
                   family. Different weights. Real forward pass.
                 </p>
@@ -537,7 +537,7 @@ function NetworkArchitectureFigure() {
           ↓
         </div>
 
-        {/* Encoder stack — 6 layers, each visualised as 12 head dots */}
+        {/* Encoder stack , 6 layers, each visualised as 12 head dots */}
         <div className="border-2 border-ink bg-ink text-paper-cream/90 p-3">
           <div className="flex items-baseline justify-between mb-2">
             <span className="font-sans uppercase tracking-[0.18em] text-[9px] text-paper-cream/55">
@@ -693,7 +693,7 @@ function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
   const dash = '-'
   const rows: Array<[string, string]> = [
     ['Model', MODEL_ID],
-    ['Architecture', cfg ? `${cfg.modelType} · ${cfg.architectures[0] ?? 'encoder-only'}` : dash],
+    ['Architecture', cfg ? `${cfg.modelType} · ${cfg.architectures[0] ?? 'encoder only'}` : dash],
     ['Layers · Heads', cfg ? `${cfg.numLayers} · ${cfg.numHeads}` : dash],
     ['Hidden dim', cfg ? String(cfg.hiddenDim) : dash],
     ['Intermediate dim', cfg ? String(cfg.intermediateDim) : dash],
@@ -714,8 +714,8 @@ function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
             A real bias classifier.
           </h2>
           <p className="mt-1 font-serif italic text-ink/60 text-[14px]">
-            DistilRoBERTa fine-tuned on the Wiki-Neutrality Corpus -
-            sentence-level BIASED vs NEUTRAL.
+            DistilRoBERTa fine tuned on the Wiki Neutrality Corpus,
+            sentence level BIASED vs NEUTRAL.
           </p>
         </div>
         <a
@@ -731,11 +731,10 @@ function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
       <PlainEnglish>
         Think of this as the recipe card for the model that's about to land
         in your browser. <strong>Layers</strong> are how many times the
-        network re-reads the sentence. <strong>Heads</strong> are how many
+        network rereads the sentence. <strong>Heads</strong> are how many
         different "angles" it considers each pass. <strong>Hidden dim</strong>{' '}
         is how much room each word gets to be described in. The fields stay
-        as <span className="font-mono not-italic">-</span> until the model
-        actually arrives.
+        empty until the model actually arrives.
       </PlainEnglish>
 
       <div className="mt-5 grid grid-cols-2 gap-x-10 gap-y-1 font-mono text-[13px]">
@@ -1063,8 +1062,8 @@ function ForwardPassPanel({
         sentence enters as numbers, flows through{' '}
         {loaded ? loaded.config.numLayers : 'several'} stacked encoder layers,
         and exits as a vote between two labels: <strong>BIASED</strong> and{' '}
-        <strong>NEUTRAL</strong>. We then re-run the model with each
-        non-special word masked to measure exactly which words pushed the
+        <strong>NEUTRAL</strong>. We then rerun the model with each
+        non special word masked to measure exactly which words pushed the
         verdict where it ended up.
       </PlainEnglish>
 
@@ -1146,10 +1145,10 @@ function ForwardPassPanel({
             </div>
           </div>
           <div className="mt-3 font-serif italic text-[12px] text-ink/55 leading-snug">
-            BIASED / NEUTRAL come from the model's training labels, Wikipedia
-            sentences before vs after a Neutral-Point-of-View edit. A high
+            BIASED / NEUTRAL come from the model's training labels: Wikipedia
+            sentences before vs after a Neutral Point of View edit. A high
             BIASED score means the sentence reads like an editor would have
-            re-written it.
+            rewritten it.
           </div>
         </div>
 
@@ -1171,7 +1170,7 @@ function ForwardPassPanel({
           <PlainEnglish>
             Each bar shows how much the verdict's confidence drops when that
             single word disappears. A tall bar means the model leaned hard on
-            that word. A near-zero bar means the model could shrug off that
+            that word. A near zero bar means the model could shrug off that
             word and still vote the same way.
           </PlainEnglish>
         </div>
@@ -1233,7 +1232,7 @@ function ForwardPassPanel({
           disabled={!artifacts || running}
           className="border border-ink px-4 py-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink hover:bg-ink hover:text-paper-cream transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {running ? 'running…' : 'Re-run'}
+          {running ? 'running…' : 'Rerun'}
         </button>
         <button
           type="button"
@@ -1253,7 +1252,7 @@ function OcclusionChart({ artifacts }: { artifacts: InferenceArtifacts | null })
     return (
       <div className="border border-dashed border-ink/30 bg-paper h-[220px] flex items-center justify-center">
         <span className="font-serif italic text-[13px] text-ink/35 px-3 text-center leading-snug">
-          Run a forward pass, saliency is computed by re-running the model
+          Run a forward pass, saliency is computed by rerunning the model
           with each word masked, one at a time.
         </span>
       </div>
@@ -1323,7 +1322,7 @@ function SaliencyPanel({ artifacts }: { artifacts: InferenceArtifacts | null }) 
       <div className="flex items-baseline justify-between gap-4">
         <div>
           <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
-            Leave-one-out occlusion · per-token
+            Leave one out occlusion · per token
           </div>
           <h3 className="mt-1 font-display font-black text-ink tracking-display-tight leading-[1.0] text-[26px]">
             Where the model looked.
@@ -1418,10 +1417,10 @@ function HashesPanel({
       <PlainEnglish>
         A hash is a fingerprint. Same input, same machine, same model →{' '}
         <em>identical</em> fingerprint. We hash both the text you typed and
-        the raw numbers the model produced. Re-run a few times: the
+        the raw numbers the model produced. Rerun a few times: the
         fingerprint either stays put (deterministic) or drifts a hair
-        (floating-point in WebAssembly threads). Either way, you can verify
-        nothing on this page was pre-baked.
+        (floating point in WebAssembly threads). Either way, you can verify
+        nothing on this page was pre baked.
       </PlainEnglish>
       <HashBlock label="Input · sha-256" value={inputHash} />
       <HashBlock label="Logits · sha-256" value={logitsHash} />
@@ -1452,7 +1451,7 @@ function HashesPanel({
             className="flex items-center gap-2 font-sans text-[11px] uppercase tracking-[0.22em] text-accent"
           >
             <span className="inline-block h-[10px] w-[10px] bg-accent" aria-hidden />
-            <span>diverged · floating-point in WASM threads</span>
+            <span>diverged · floating point in WASM threads</span>
           </motion.div>
         )}
       </AnimatePresence>

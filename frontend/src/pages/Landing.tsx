@@ -61,10 +61,10 @@ const GAMES: GameDef[] = [
 
 const STATS: [string, string][] = [
   ['DeBERTa-v3 base', '139M params'],
-  ['Cross-outlet pairs', '1.2M'],
+  ['Cross outlet pairs', '1.2M'],
   ['Story clusters', '142k'],
   ['Outlets covered', '312'],
-  ['Held-out concordance', '94.6%'],
+  ['Held out concordance', '94.6%'],
   ['vs BERT-base', '+6.2 F1'],
   ['ECE (calibration)', '0.034'],
   ['p50 inference', '78 ms'],
@@ -156,7 +156,7 @@ function HeroSection({
           <p className="mt-6 max-w-2xl font-serif text-[20px] italic leading-[1.45] text-ink/65">
             Search any topic. A custom neural network reads each article we find,
             scores it across eight bias dimensions, and plots it on the political
-            spectrum - so you can compare framing across the press at a glance.
+            spectrum, so you can compare framing across the press at a glance.
           </p>
         </motion.div>
 
@@ -169,7 +169,7 @@ function HeroSection({
           <p className="font-serif text-[17px] italic leading-[1.55] text-ink/70">
             Type a topic. We pull recent news from across the press, run each
             article through a custom neural network, and plot it on the spectrum
-            from far-left to far-right &mdash; so you can see who is framing
+            from far left to far right, so you can see who is framing
             the story which way.
           </p>
           <form
@@ -258,7 +258,7 @@ function PasteSection() {
           a single article.
         </h3>
         <p className="mt-5 max-w-md font-serif text-[16px] italic leading-[1.55] text-ink/65">
-          Paste the body or drop a URL. You&apos;ll get an eight-dimension reading,
+          Paste the body or drop a URL. You&apos;ll get an eight dimension reading,
           the loaded phrases highlighted, and a verifiable inference receipt.
         </p>
       </div>
@@ -610,11 +610,11 @@ function NoteSection() {
             I
           </span>
           built this alone over eighteen months. The model is a custom DeBERTa-v3
-          fine-tune with eight classification heads, an adversarial outlet-invariance
-          branch, and a comparison-loss objective trained on 1.2M cross-outlet
+          fine tune with eight classification heads, an adversarial outlet invariance
+          branch, and a comparison loss objective trained on 1.2M cross outlet
           article pairs across 312 outlets. It reads each article relative to how
           the same facts are framed elsewhere, not against a fixed left/right axis.
-          88 GPU-hours on 4× A100s. 94.6% concordance with AllSides. A 67M-param
+          88 GPU hours on 4× A100s. 94.6% concordance with AllSides. A 67M param
           distilled student loads in your browser so you can watch the encoder run.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-8 font-sans text-[11px] uppercase tracking-[0.22em]">

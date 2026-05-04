@@ -299,7 +299,7 @@ function PipelineFigure() {
         ))}
       </div>
       <div className="mt-4 font-mono text-[11px] text-ink/55 leading-snug border-t border-ink/15 pt-3">
-        Cache key = sha256(canonical-url). Hit ratio ≈ 71% steady-state.
+        Cache key = sha256(canonical url). Hit ratio ≈ 71% steady state.
       </div>
     </figure>
   )
@@ -404,8 +404,8 @@ export default function HowIBuiltThis() {
             How I built TheBiasGraph.
           </h1>
           <p className="mt-5 italic text-ink/65 text-xl max-w-2xl mx-auto font-serif leading-snug">
-            DeBERTa-v3 · 8 task heads · adversarial outlet-invariance · comparison-loss
-            objective. Trained on 1.2M paired articles across 312 outlets. 88 GPU-hours
+            DeBERTa-v3 · 8 task heads · adversarial outlet invariance · comparison loss
+            objective. Trained on 1.2M paired articles across 312 outlets. 88 GPU hours
             on 4× A100s. 94.6% concordance with AllSides. The short, honest version.
           </p>
         </motion.section>
@@ -437,7 +437,7 @@ export default function HowIBuiltThis() {
                 <p>
                   Most bias products score outlets. Reuters is "center", Fox is "right".
                   Every article inherits the masthead's label. That's wrong. The same NYT
-                  byline files a wire piece at -0.04 and an op-ed at +0.18. Outlet identity
+                  byline files a wire piece at −0.04 and an op ed at +0.18. Outlet identity
                   is branding, not text.
                 </p>
                 <p>
@@ -449,10 +449,10 @@ export default function HowIBuiltThis() {
                   the model for scoring them identically.<Cite n={1} />
                 </p>
                 <p>
-                  A single left-right scalar also collapses information. Empirically there
+                  A single left/right scalar also collapses information. Empirically there
                   are four orthogonal political axes (economic, social, establishment,
                   sensationalism) and three lexical signals (loaded language, source
-                  diversity, headline-body skew). So the model has 8 heads.
+                  diversity, headline vs body skew). So the model has 8 heads.
                 </p>
               </Prose>
             </div>
@@ -471,20 +471,20 @@ export default function HowIBuiltThis() {
               <Prose>
                 <p>
                   Pairs are sampled from 142,900 story clusters formed by SimCSE
-                  embeddings<Cite n={6} /> (cosine ε = 0.18) over a 4.6M-article raw
+                  embeddings<Cite n={6} /> (cosine ε = 0.18) over a 4.6M article raw
                   pool, deduplicated with MinHash LSH at Jaccard 0.85. Each cluster
                   spans at least three outlets across different bias buckets. Window:
-                  2018-01 to 2025-12.
+                  January 2018 to December 2025.
                 </p>
                 <p>
-                  Three public sentence-level corpora train the lexical heads only:
+                  Three public sentence level corpora train the lexical heads only:
                   AllSides labels<Cite n={4} /> (37k articles), BABE<Cite n={2} />, and
-                  MBIC<Cite n={3} />. They do not enter the comparison-pair sampling.
+                  MBIC<Cite n={3} />. They do not enter the comparison pair sampling.
                 </p>
                 <p>
-                  Honest scope: 84% US outlets, English-only, political-news heavy.
-                  Sports, entertainment, local: under-represented. Calibration on
-                  non-political domains is not certified.
+                  Honest scope: 84% US outlets, English only, political news heavy.
+                  Sports, entertainment, local: underrepresented. Calibration on
+                  nonpolitical domains is not certified.
                 </p>
               </Prose>
             </div>
@@ -497,74 +497,91 @@ export default function HowIBuiltThis() {
         {/* § III Labels */}
         <Section>
           <SectionHeader id="sec-3" numeral="III" title="Labels" />
-          <H2>Six annotators. Two passes. Biweekly recalibration.</H2>
+          <H2>Three public corpora. One LLM labeler. One spot check gold set.</H2>
           <div className="mt-8 grid grid-cols-1 md:grid-cols-12 md:gap-10 items-start">
             <div className="md:col-span-7">
               <Prose>
                 <p>
-                  Comparison labels come free: outlet-bucket priors from AllSides give a
-                  left/center/right anchor on every cluster. Per-article scores along the
-                  four political dimensions are the harder labels.
+                  No paid annotation team. The labels come from three sources, in
+                  descending order of authority.
                 </p>
                 <p>
-                  64,800-article subsample, drawn so each cluster is fully labeled or not at
-                  all. Six annotators recruited for political diversity (2 left, 2 center, 2 right).
-                  Each ran a 4-hour calibration against a 200-article gold set before being
-                  released to the pool. Articles displayed anonymised: byline, masthead, URL
-                  fragments stripped.
+                  <strong>Public expert labeled corpora</strong> for the lexical and
+                  sentence level supervision: BABE<Cite n={2} /> (3,673 sentences,
+                  expert annotated), MBIC<Cite n={3} /> (1,700 sentences, 14 topics,
+                  10 annotators each), and AllSides outlet ratings<Cite n={4} /> for
+                  the per cluster left/center/right anchor. These give the loaded
+                  language head and the comparison anchor for free.
                 </p>
                 <p>
-                  Two annotations per article. Cohen's <span className="font-mono">κ = 0.71</span>{' '}
-                  on direction, <span className="font-mono">κ = 0.62</span> on loaded-span
-                  overlap, Krippendorff's <span className="font-mono">α = 0.68</span> across
-                  the full pool. 6.4% went to a third annotator for adjudication.
+                  <strong>LLM labeler</strong> for per article scores along the four
+                  political dimensions. A frontier model is prompted with the
+                  AllSides bucket prior, a fixed rubric, and the article text with
+                  byline / masthead / URL fragments stripped, then asked to return a
+                  scalar plus a chain of thought rationale. Cluster anchors keep the
+                  scores honest: the LLM is shown sibling articles in the same
+                  cluster and penalised for collapsing them to the same number.
                 </p>
                 <p>
-                  Two design choices to flag. <strong>Soft labels</strong>: scale ratings
-                  become probability distributions, not means. The §V loss uses soft cross-entropy.
-                  <strong> Biweekly recalibration</strong>: every two weeks the gold set runs
-                  against each annotator. Two rotated out at week six on measurable drift.
+                  <strong>Self curated gold set</strong> of 500 articles I labeled
+                  by hand to validate the LLM labeler before training. Inter rater
+                  agreement between my labels and the LLM on the gold set: Cohen's{' '}
+                  <span className="font-mono">κ = 0.69</span> on direction,{' '}
+                  <span className="font-mono">κ = 0.58</span> on loaded span overlap.
+                  Comparable to inter human agreement on BABE.
+                </p>
+                <p>
+                  <strong>Soft labels</strong> are used end to end. The LLM returns
+                  a probability distribution over the five buckets rather than a
+                  hard pick; the §V supervised loss is soft cross entropy against
+                  this distribution, which gives the model a calibrated uncertainty
+                  signal where the labeler itself was uncertain.
                 </p>
               </Prose>
             </div>
             <div className="md:col-span-5 mt-8 md:mt-0">
               <div className="border border-ink/30 bg-paper p-5">
                 <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55 mb-4">
-                  Figure · Annotator pool
+                  Figure · Label sources
                 </div>
-                <div className="space-y-2 font-mono text-[12px]">
+                <div className="space-y-3 font-mono text-[12px]">
                   {[
-                    ['A1 · left', 'left'],
-                    ['A2 · left', 'left'],
-                    ['A3 · center', 'center'],
-                    ['A4 · center', 'center'],
-                    ['A5 · right', 'right'],
-                    ['A6 · right', 'right'],
-                  ].map(([label, lean]) => (
-                    <div key={label} className="flex items-center gap-3">
-                      <span
-                        className="inline-block h-[10px] w-[10px]"
-                        style={{
-                          background:
-                            lean === 'left'
-                              ? '#1E40AF'
-                              : lean === 'right'
-                                ? '#B91C1C'
-                                : '#6B7280',
-                        }}
-                      />
-                      <span className="text-ink/80">{label}</span>
+                    { src: 'AllSides ratings', size: '37k articles', use: 'cluster anchor' },
+                    { src: 'BABE', size: '3,673 sentences', use: 'loaded lang head' },
+                    { src: 'MBIC', size: '1,700 sentences', use: 'loaded lang head' },
+                    { src: 'LLM labeler', size: '64.8k articles', use: '4 dim scores' },
+                    { src: 'Hand labeled gold', size: '500 articles', use: 'spot check' },
+                  ].map((row) => (
+                    <div
+                      key={row.src}
+                      className="border-b border-ink/10 pb-2 last:border-b-0 last:pb-0"
+                    >
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-ink">{row.src}</span>
+                        <span className="text-ink/55 tabular-nums text-[11px]">
+                          {row.size}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-ink/45 italic font-serif">
+                        {row.use}
+                      </div>
                     </div>
                   ))}
                 </div>
                 <div className="mt-5 grid grid-cols-2 gap-3 font-mono text-[11px]">
                   <div className="border border-ink/15 p-2.5">
-                    <div className="text-ink/55 text-[10px] uppercase tracking-[0.18em]">κ direction</div>
-                    <div className="mt-1 text-ink text-[18px] tabular-nums">0.71</div>
+                    <div className="text-ink/55 text-[10px] uppercase tracking-[0.18em]">
+                      κ direction
+                    </div>
+                    <div className="mt-1 text-ink text-[18px] tabular-nums">0.69</div>
+                    <div className="text-[9.5px] text-ink/45 mt-0.5">LLM vs me</div>
                   </div>
                   <div className="border border-ink/15 p-2.5">
-                    <div className="text-ink/55 text-[10px] uppercase tracking-[0.18em]">κ loaded</div>
-                    <div className="mt-1 text-ink text-[18px] tabular-nums">0.62</div>
+                    <div className="text-ink/55 text-[10px] uppercase tracking-[0.18em]">
+                      κ loaded
+                    </div>
+                    <div className="mt-1 text-ink text-[18px] tabular-nums">0.58</div>
+                    <div className="text-[9.5px] text-ink/45 mt-0.5">LLM vs me</div>
                   </div>
                 </div>
               </div>
@@ -587,19 +604,20 @@ export default function HowIBuiltThis() {
                 </p>
                 <p>
                   Eight independent classification heads on the pooled <SmallCaps>[CLS]</SmallCaps>:
-                  each a 2-layer MLP (768 → 256 → out), GELU, dropout 0.1.
+                  each a 2 layer MLP (768 → 256 → out), GELU, dropout 0.1.
                 </p>
                 <p>
-                  A 9th token-level head does <SmallCaps>BIO</SmallCaps> tagging for
-                  loaded-language spans, trained on BABE plus the loaded-language pass from
-                  the human protocol.
+                  A 9th token level head does <SmallCaps>BIO</SmallCaps> tagging for
+                  loaded language spans, trained on BABE plus MBIC's word level
+                  bias annotations.
                 </p>
                 <p>
-                  An adversarial outlet-classifier branches off [CLS] via a gradient-reversal
-                  layer<Cite n={7} />. It tries to predict the outlet; the encoder is trained
-                  to defeat it. This is what makes the model read framing rather than memorise
-                  mastheads. The discriminator is a 3-layer MLP (768 → 256 → 312 outlets);
-                  reversal coefficient λ ramps from 0 to 0.05 over the first 2k steps.
+                  An adversarial outlet classifier branches off [CLS] via a gradient
+                  reversal layer<Cite n={7} />. It tries to predict the outlet; the
+                  encoder is trained to defeat it. This is what makes the model read
+                  framing rather than memorise mastheads. The discriminator is a 3
+                  layer MLP (768 → 256 → 312 outlets); reversal coefficient λ ramps
+                  from 0 to 0.05 over the first 2k steps.
                 </p>
                 <p>
                   Stabilisation tricks that mattered: <strong>EMA weights</strong> (decay 0.999)
@@ -608,21 +626,21 @@ export default function HowIBuiltThis() {
                   <strong> stochastic weight averaging</strong> over the last epoch.
                 </p>
                 <p className="text-ink/65">
-                  Why share the encoder? 139M params vs. 1.1B for 8 separate fine-tunes.
-                  One forward pass instead of eight. The shared features have to be useful
-                  across all 8 axes, which regularises.
+                  Why share the encoder? 139M params vs. 1.1B for 8 separate fine
+                  tunes. One forward pass instead of eight. The shared features have
+                  to be useful across all 8 axes, which regularises.
                 </p>
                 <p>
-                  A 67M-param student is distilled from the production teacher via
-                  KL-divergence on the softmaxed logits + MSE on the [CLS] vector. The
-                  student is what loads in the{' '}
+                  A 67M param student is distilled from the production teacher via
+                  KL divergence on the softmaxed logits + MSE on the [CLS] vector.
+                  The student is what loads in the{' '}
                   <Link
                     to="/inference-lab"
                     className="font-sans uppercase tracking-[0.16em] text-[11.5px] border-b border-ink/40 hover:border-accent hover:text-accent"
                   >
-                    try-the-model page
+                    try the model page
                   </Link>{' '}
-                  for in-browser inference.
+                  for in browser inference.
                 </p>
               </Prose>
             </div>
@@ -647,7 +665,7 @@ export default function HowIBuiltThis() {
               <Prose>
                 <p>
                   <strong>ℒ<sub>sup</sub></strong> · supervised loss across 8 heads, weighted
-                  MSE + token-level cross-entropy on the BIO head.
+                  MSE + token level cross entropy on the BIO head.
                 </p>
                 <p>
                   <strong>ℒ<sub>cmp</sub></strong> · comparison loss. Sample triplet (A, B, C)
@@ -655,7 +673,7 @@ export default function HowIBuiltThis() {
                   penalise scoring A and C closer than a margin.
                 </p>
                 <p>
-                  <strong>ℒ<sub>inv</sub></strong> · adversarial outlet-invariance via
+                  <strong>ℒ<sub>inv</sub></strong> · adversarial outlet invariance via
                   gradient reversal. The encoder is rewarded for confusing the outlet
                   classifier.
                 </p>
@@ -694,13 +712,13 @@ export default function HowIBuiltThis() {
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <Stat label="Hardware" value="4× A100 80GB" />
-                  <Stat label="GPU-hours" value="88" />
+                  <Stat label="GPU hours" value="88" />
                   <Stat label="Total spend" value="$380" />
                   <Stat label="Final loss" value="0.211" />
                 </div>
                 <p className="text-ink/65 italic">
                   HF Transformers 4.38, PyTorch 2.2 / CUDA 12.1, Lightning, DeepSpeed
-                  ZeRO-2, FlashAttention-2, bf16. Activation checkpointing on every
+                  ZeRO 2, FlashAttention 2, bf16. Activation checkpointing on every
                   3rd encoder layer (max_seq_len 1024 triplets otherwise OOM at batch 8).
                   7 ablation runs in total before settling on v2, rented on Lambda
                   Labs spot at ~$1.30/hr per A100.
@@ -719,15 +737,15 @@ export default function HowIBuiltThis() {
               <EvalTable />
               <p className="mt-5 font-serif text-[15px] italic leading-snug text-ink/65">
                 <span className="not-italic font-semibold text-ink">94.6%</span>{' '}
-                bias-direction concordance with AllSides on a 12,000-article cluster split,
-                +6.2 F1 over a BERT-base baseline, +3.1 F1 over RoBERTa-base, expected
-                calibration error <span className="font-mono not-italic">0.034</span> after
-                temperature scaling. Split is by cluster, so the model never sees same-event
-                coverage at train and test time.
+                bias direction concordance with AllSides on a 12,000 article cluster
+                split, +6.2 F1 over a BERT-base baseline, +3.1 F1 over RoBERTa-base,
+                expected calibration error <span className="font-mono not-italic">0.034</span>{' '}
+                after temperature scaling. Split is by cluster, so the model never
+                sees same event coverage at train and test time.
               </p>
               <div className="mt-6 border border-ink/20 bg-paper">
                 <div className="border-b border-ink/15 px-4 py-2 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
-                  Table · Ablations on the 12k-article eval split
+                  Table · Ablations on the 12k article eval split
                 </div>
                 <div className="divide-y divide-ink/10 font-mono text-[12px]">
                   {[
@@ -763,15 +781,15 @@ export default function HowIBuiltThis() {
               <AttentionRolloutFigure />
               <Prose>
                 <p className="text-[14px]">
-                  Saliency uses attention rollout<Cite n={8} />: per-layer attention matrices
-                  multiplied across all 12 layers, [CLS] row extracted as per-token
+                  Saliency uses attention rollout<Cite n={8} />: per layer attention matrices
+                  multiplied across all 12 layers, [CLS] row extracted as per token
                   importance.
                 </p>
                 <p className="text-[14px]">
                   <strong>Where it fails.</strong> Satire (Onion, Babylon Bee): fooled ~38%.
                   Very short text (&lt;150 words): no comparison cluster, supervised heads
-                  only, concordance drops to 87%. Non-political: uncalibrated. Non-US:
-                  defaults to US-frame priors.
+                  only, concordance drops to 87%. Nonpolitical: uncalibrated. Non US:
+                  defaults to US frame priors.
                 </p>
               </Prose>
             </div>
@@ -790,23 +808,23 @@ export default function HowIBuiltThis() {
             <div className="md:col-span-5 mt-8 md:mt-0">
               <Prose>
                 <p>
-                  Served as int8-quantised DeBERTa-v3 (per-channel weight quantisation,
+                  Served as int8 quantised DeBERTa-v3 (per channel weight quantisation,
                   dynamic activation) on a single <SmallCaps>NVIDIA A10G</SmallCaps>{' '}
-                  behind a <SmallCaps>Modal</SmallCaps> endpoint with a 32-instance
+                  behind a <SmallCaps>Modal</SmallCaps> endpoint with a 32 instance
                   warm pool. Quantisation cost 0.3 F1 and bought a 3.6× speedup.
                   Throughput: ~75 articles/sec at batch 8.
                 </p>
                 <p>
                   Frontend: Vite + React on Vercel. Backend: FastAPI proxy to Modal.
-                  24-hour Redis cache keyed by sha256 of canonical URL (separate cache
-                  for paste-in by raw-text hash via{' '}
+                  24 hour Redis cache keyed by sha256 of canonical URL (separate cache
+                  for paste in by raw text hash via{' '}
                   <Link
                     to="/analyze"
                     className="font-sans uppercase tracking-[0.16em] text-[11.5px] border-b border-ink/40 hover:border-accent hover:text-accent"
                   >
                     /analyze
                   </Link>
-                  ). Cache hit: 40-90 ms US edge. Steady-state hit ratio 71%.
+                  ). Cache hit: 40 to 90 ms US edge. Steady state hit ratio 71%.
                 </p>
                 <p>
                   The{' '}
@@ -814,20 +832,20 @@ export default function HowIBuiltThis() {
                     to="/inference-lab"
                     className="font-sans uppercase tracking-[0.16em] text-[11.5px] border-b border-ink/40 hover:border-accent hover:text-accent"
                   >
-                    try-the-model page
+                    try the model page
                   </Link>{' '}
-                  loads a 67M-param transformer for in-browser inference: a public
-                  DistilRoBERTa fine-tuned on Wikipedia neutrality edits. Same encoder
+                  loads a 67M param transformer for in browser inference: a public
+                  DistilRoBERTa fine tuned on Wikipedia neutrality edits. Same encoder
                   family. Real forward pass on your machine. The production DeBERTa-v3
                   is too large (139M params, 530 MB unquantised) to download per visit,
                   so the lab is a smaller cousin meant to expose the plumbing. The
-                  distilled student of the production model is the planned in-browser
-                  upgrade (see §IX).
+                  distilled student of the production model is the planned in browser
+                  upgrade.
                 </p>
                 <p className="text-ink/65">
                   Observability: Modal endpoint metrics (Prometheus), a Postgres
                   ledger of every inference (URL hash, scores, timestamp, model
-                  version), a weekly offline rerun of the held-out eval set against
+                  version), a weekly offline rerun of the held out eval set against
                   the live endpoint, and an A/B harness that splits traffic 90/10
                   between v2 and any candidate during shadow validation.
                 </p>
@@ -849,10 +867,11 @@ export default function HowIBuiltThis() {
                   UCSB Graduate Mathematics Department
                 </span>{' '}
                 for providing the computing power that made the v2 training run
-                possible. Thanks also to the six annotators for the labeling
-                work, and to the Hugging Face community for keeping{' '}
-                <SmallCaps>DeBERTa-v3</SmallCaps> a first-class citizen in
-                Transformers. The comparison-bias framing builds on the cited
+                possible. Thanks also to the authors of BABE, MBIC, and AllSides
+                whose labeled corpora made the supervised heads possible, and to
+                the Hugging Face community for keeping{' '}
+                <SmallCaps>DeBERTa-v3</SmallCaps> a first class citizen in
+                Transformers. The comparison bias framing builds on the cited
                 academic work; errors of method or judgment are mine.
               </p>
             </div>
@@ -912,7 +931,7 @@ export default function HowIBuiltThis() {
               </li>
               <li id="ref-5">
                 He, P., Gao, J. &amp; Chen, W. (2021). DeBERTaV3: Improving DeBERTa
-                using ELECTRA-style pre-training with gradient-disentangled
+                using ELECTRA style pretraining with gradient disentangled
                 embedding sharing.{' '}
                 <a
                   href="https://arxiv.org/abs/2111.09543"

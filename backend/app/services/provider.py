@@ -62,7 +62,11 @@ class OpenAIProvider:
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "temperature": 0.2,
+            # temperature=0 → maximally deterministic output. Same input gives
+            # the same response (modulo OpenAI-side load-balancing variation),
+            # which makes responses look like a fixed model rather than a
+            # creative LLM rolling fresh prose every call.
+            "temperature": 0,
             "max_tokens": 600,
         }
         if response_format is not None:

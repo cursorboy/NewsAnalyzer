@@ -261,7 +261,7 @@ export default function ArticleDetail() {
               <div className="mt-[3px] border-t border-ink/30" />
             </div>
             <p className="-mt-3 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/65">
-              Sidebar - Network reading
+              Sidebar · Network reading
             </p>
 
             <InferenceTrace
