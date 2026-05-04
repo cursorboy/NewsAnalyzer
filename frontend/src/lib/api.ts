@@ -36,8 +36,14 @@ export type APIStatus = {
   api_configured: boolean
 }
 
-// Resolve API base: Use relative path in production, localhost in dev
-const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? '' : 'http://localhost:8000')
+// Resolve API base: Use the current origin in production (same-origin), localhost in dev.
+// IMPORTANT: must be a real absolute URL — `new URL('/foo', '')` throws TypeError because
+// an empty string is not a valid base URL. Falling back to window.location.origin keeps
+// the URL constructor happy in production where API and frontend live on the same domain.
+const RUNTIME_ORIGIN = typeof window !== 'undefined' ? window.location.origin : ''
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  (import.meta.env.PROD ? RUNTIME_ORIGIN : 'http://localhost:8000')
 
 // Debug logging
 console.log('🔍 API Configuration:', {
