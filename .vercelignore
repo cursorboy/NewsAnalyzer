@@ -1,0 +1,29 @@
+.git
+.gitignore
+.DS_Store
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# Python
+__pycache__
+*.pyc
+.venv
+venv
+.pytest_cache
+.mypy_cache
+
+# Editor
+.vscode
+.idea
+
+# Project
+design_handoff
+.claude
+*.log

@@ -312,15 +312,12 @@ class handler(BaseHTTPRequestHandler):
             search_results = await search_news(query, num=12)
             print(f"Debug: Got {len(search_results)} search results")
 
-            classification_tasks = []
             article_data = []
-
             for i, result in enumerate(search_results):
                 url = result.get('link', '')
                 title = result.get('title', '')
                 snippet = result.get('snippet', '')
                 source = extract_domain(url) or 'unknown'
-
                 article_data.append({
                     "id": f"article_{i}",
                     "url": url,
@@ -330,10 +327,48 @@ class handler(BaseHTTPRequestHandler):
                     "published_at": result.get('published_at'),
                 })
 
-                # Use hybrid: known outlets get OUTLET_BIAS lookup (CNN -> -0.5, Fox -> +0.7),
-                # unknown outlets fall through to AI which itself blends in any prior.
-                classification_tasks.append(classify_hybrid(title, snippet, source))
+            # ── Stage 1: parallel-fetch every article body ────────────────────
+            # _fetch_url is sync (httpx.Client + BeautifulSoup); wrap each in
+            # to_thread and gather. Semaphore caps concurrent outbound requests.
+            fetch_sem = asyncio.Semaphore(10)
 
+            async def fetch_one(url: str) -> tuple[str, str]:
+                async with fetch_sem:
+                    if not url:
+                        return "", ""
+                    try:
+                        return await asyncio.to_thread(_fetch_url, url)
+                    except Exception as e:
+                        print(f"Debug: fetch failed for {url}: {e}")
+                        return "", ""
+
+            print(f"Debug: Fetching {len(article_data)} article bodies in parallel")
+            fetched = await asyncio.gather(
+                *(fetch_one(a["url"]) for a in article_data),
+                return_exceptions=False,
+            )
+
+            # Keep snippet as fallback when body extraction yields nothing useful.
+            # Cap body at 4000 chars to keep LLM input bounded.
+            BODY_CAP = 4000
+            BODY_MIN = 200  # less than this → not worth using, fall back to snippet
+            classify_inputs = []
+            for art, (fetched_title, fetched_body) in zip(article_data, fetched):
+                body = (fetched_body or "").strip()
+                if len(body) < BODY_MIN:
+                    text_for_classifier = art["snippet"]
+                    art["_body_used"] = False
+                else:
+                    text_for_classifier = body[:BODY_CAP]
+                    art["_body_used"] = True
+                classify_inputs.append((art["title"], text_for_classifier, art["source"]))
+
+            body_count = sum(1 for a in article_data if a.get("_body_used"))
+            print(f"Debug: {body_count}/{len(article_data)} articles classified on full body, "
+                  f"{len(article_data) - body_count} on snippet fallback")
+
+            # ── Stage 2: parallel-classify ────────────────────────────────────
+            classification_tasks = [classify_hybrid(t, s, src) for (t, s, src) in classify_inputs]
             print(f"Debug: Starting parallel classification of {len(classification_tasks)} articles")
             semaphore = asyncio.Semaphore(5)
 
