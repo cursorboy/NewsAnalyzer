@@ -11,7 +11,7 @@ const SUGGESTED_TOPICS = [
   'gun policy',
   'healthcare',
   'tariffs',
-  'tech policy',
+  'abortion rights',
 ] as const
 
 type Props = {

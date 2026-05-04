@@ -11,9 +11,9 @@ const HERO_CHIPS = [
   'student loans',
   'border policy',
   'Ukraine aid',
-  'AI regulation',
+  'gun policy',
   'Fed rate cuts',
-  'EV mandates',
+  'abortion rights',
 ]
 
 type PasteMode = 'paste' | 'url'

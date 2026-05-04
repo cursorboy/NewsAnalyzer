@@ -1,18 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" fill="#111111"/>
-  <!-- Stylized serif T (font-independent, scales clean to 16x16) -->
-  <rect x="11" y="15" width="42" height="7" fill="#F4EDDF"/>
-  <rect x="28.5" y="22" width="7" height="29" fill="#F4EDDF"/>
-  <!-- Tiny serif feet on the T crossbar -->
-  <rect x="11" y="22" width="3" height="3" fill="#F4EDDF"/>
-  <rect x="50" y="22" width="3" height="3" fill="#F4EDDF"/>
-  <!-- Spectrum bar below — the brand's defining element -->
   <defs>
     <linearGradient id="spec" x1="0" x2="1" y1="0" y2="0">
-      <stop offset="0" stop-color="#1d3a8a"/>
-      <stop offset="0.5" stop-color="#9ca3af"/>
-      <stop offset="1" stop-color="#7f1d1d"/>
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="0.5" stop-color="#F4EDDF"/>
+      <stop offset="1" stop-color="#dc2626"/>
     </linearGradient>
   </defs>
-  <rect x="11" y="55" width="42" height="3" fill="url(#spec)"/>
+  <!-- Ink square -->
+  <rect width="64" height="64" rx="10" fill="#111111"/>
+  <!-- Saturated blue→cream→red spectrum bar (the brand's defining element) -->
+  <rect x="8" y="36" width="48" height="4" rx="2" fill="url(#spec)"/>
+  <!-- Three article markers plotted above the spectrum at different positions -->
+  <circle cx="18" cy="24" r="3" fill="#F4EDDF" stroke="#111111" stroke-width="1"/>
+  <circle cx="36" cy="20" r="3" fill="#F4EDDF" stroke="#111111" stroke-width="1"/>
+  <circle cx="48" cy="26" r="3" fill="#F4EDDF" stroke="#111111" stroke-width="1"/>
+  <!-- Center neutral tick -->
+  <rect x="31.25" y="32" width="1.5" height="12" fill="#F4EDDF" opacity="0.4"/>
 </svg>
