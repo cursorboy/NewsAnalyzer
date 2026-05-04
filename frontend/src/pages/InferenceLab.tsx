@@ -333,21 +333,27 @@ export default function InferenceLab() {
                   Read this first
                 </div>
                 <h3 className="mt-3 font-display font-black text-ink tracking-display-tight leading-[1.0] text-[34px]">
-                  This is not the production model.
+                  Same family. Different weights.
                 </h3>
                 <p className="mt-5 font-serif text-[16px] leading-[1.65] text-ink/80">
-                  The production TheBiasGraph runs a custom 139M-parameter
-                  DeBERTa-v3 with eight task heads, server-side, and is not
-                  downloadable. What loads here is a smaller public cousin in
-                  the same architectural family: <span className="font-mono text-[14px]">valurank/distilroberta-bias</span>,
-                  67M parameters, fine-tuned on Wikipedia neutrality edits.
+                  Production TheBiasGraph runs a custom 139M-parameter
+                  DeBERTa-v3 fine-tune with eight task heads and an adversarial
+                  outlet-invariance branch, trained on 1.2M cross-outlet
+                  article pairs. It lives server-side on a Modal endpoint
+                  because the unquantised checkpoint is 530 MB and we don't
+                  want every visitor downloading it.
                 </p>
                 <p className="mt-3 font-serif text-[16px] leading-[1.65] text-ink/80">
-                  The point of this page is not to show you the production
-                  verdict. The point is to let you watch a real transformer
-                  chew on text in your browser, with no server in the loop, so
-                  you can confirm there's no smoke and mirrors. Same plumbing,
-                  smaller model, full transparency.
+                  This page loads a 67M-param companion - public DistilRoBERTa
+                  fine-tuned on Wikipedia neutrality edits<Link
+                    to="/how-i-built-this#sec-4"
+                    className="ml-1 font-sans text-[10px] uppercase tracking-[0.18em] text-ink border-b border-ink/40 hover:text-accent hover:border-accent"
+                  >
+                    [4]
+                  </Link>{' '}
+                  - so you can watch a real transformer chew on text in your
+                  browser with no server in the loop. Same architectural
+                  family. Different weights. Real forward pass.
                 </p>
               </div>
               <div className="col-span-5">

@@ -60,10 +60,14 @@ const GAMES: GameDef[] = [
 ]
 
 const STATS: [string, string][] = [
-  ['DeBERTa-v3 base', '139M'],
-  ['Cross-outlet pairs', '1.24M'],
+  ['DeBERTa-v3 base', '139M params'],
+  ['Cross-outlet pairs', '1.2M'],
+  ['Story clusters', '142k'],
   ['Outlets covered', '312'],
-  ['Held-out concordance', '94.1%'],
+  ['Held-out concordance', '94.6%'],
+  ['vs BERT-base', '+6.2 F1'],
+  ['ECE (calibration)', '0.034'],
+  ['p50 inference', '78 ms'],
   ['Built by', 'one engineer'],
 ]
 
@@ -606,12 +610,12 @@ function NoteSection() {
             I
           </span>
           built this alone over eighteen months. The model is a custom DeBERTa-v3
-          encoder with eight classification heads, trained on 1.24M cross-outlet
-          article pairs with a comparison-bias objective - it reads each article
-          relative to how the same facts are framed elsewhere, not against a fixed
-          left/right axis. The whole network is yours to inspect: weights load into
-          the browser, attention rolls out token by token, and every inference is
-          hashed against its inputs.
+          fine-tune with eight classification heads, an adversarial outlet-invariance
+          branch, and a comparison-loss objective trained on 1.2M cross-outlet
+          article pairs across 312 outlets. It reads each article relative to how
+          the same facts are framed elsewhere, not against a fixed left/right axis.
+          88 GPU-hours on 4× A100s. 94.6% concordance with AllSides. A 67M-param
+          distilled student loads in your browser so you can watch the encoder run.
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-8 font-sans text-[11px] uppercase tracking-[0.22em]">
           <Link
