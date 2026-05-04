@@ -68,7 +68,7 @@ class OpenAIProvider:
         if response_format is not None:
             payload["response_format"] = response_format
 
-        with httpx.Client(timeout=20.0) as client:
+        with httpx.Client(timeout=45.0) as client:
             r = client.post(OPENAI_CHAT_URL, headers=self._headers(), json=payload)
             r.raise_for_status()
             data = r.json()
@@ -77,7 +77,7 @@ class OpenAIProvider:
     def embed(self, text: str) -> list[float]:
         import httpx
         payload = {"model": DEFAULT_EMBED_MODEL, "input": text}
-        with httpx.Client(timeout=20.0) as client:
+        with httpx.Client(timeout=45.0) as client:
             r = client.post(OPENAI_EMBED_URL, headers=self._headers(), json=payload)
             r.raise_for_status()
             data = r.json()

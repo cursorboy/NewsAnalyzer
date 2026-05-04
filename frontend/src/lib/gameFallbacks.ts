@@ -338,11 +338,58 @@ function jaccard(a: string, b: string): number {
   return union === 0 ? 0 : inter / union
 }
 
+const LOADED_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\bslam(s|med|ming)?\b/gi, 'criticized'],
+  [/\bblast(s|ed|ing)?\b/gi, 'criticized'],
+  [/\bripped?\b/gi, 'criticized'],
+  [/\btorched?\b/gi, 'criticized'],
+  [/\bdestroy(s|ed|ing)?\b/gi, 'challenged'],
+  [/\bcrush(es|ed|ing)?\b/gi, 'defeated'],
+  [/\bshock(s|ed|ing)?\b/gi, 'unexpected'],
+  [/\bbombshell\b/gi, 'report'],
+  [/\bdesperate(ly)?\b/gi, ''],
+  [/\breckless(ly)?\b/gi, ''],
+  [/\bradical\b/gi, ''],
+  [/\bextreme(ly)?\b/gi, ''],
+  [/\bdisastrous\b/gi, 'controversial'],
+  [/\boutrage(ous|d)?\b/gi, 'criticism'],
+  [/\bcaved?\b/gi, 'agreed'],
+  [/\bgrilled?\b/gi, 'questioned'],
+  [/\bvowed?\b/gi, 'said'],
+  [/\bunleash(es|ed|ing)?\b/gi, 'began'],
+  [/\bstunning\b/gi, 'notable'],
+  [/\bcrackdown\b/gi, 'enforcement'],
+  [/\bgut(s|ted|ting)?\b/gi, 'reduced'],
+  [/\bplummet(s|ed|ing)?\b/gi, 'fell'],
+  [/\bsoared?\b/gi, 'rose'],
+  [/\bcatastrophic\b/gi, 'severe'],
+  [/\bsweeping\b/gi, 'broad'],
+]
+
+export function heuristicNeutralRewrite(original: string): string {
+  let out = original
+  for (const [pat, repl] of LOADED_REPLACEMENTS) {
+    out = out.replace(pat, repl)
+  }
+  out = out.replace(/\s+/g, ' ').replace(/\s+([,.;:])/g, '$1').trim()
+  if (out && out[0] >= 'a' && out[0] <= 'z') out = out[0].toUpperCase() + out.slice(1)
+  return out
+}
+
 export function fallbackHeadlineScore(original: string, rewrite: string): HeadlineRewriteScore {
   const orig = original.trim()
   const rew = rewrite.trim()
-  if (!rew) {
-    return { total: 0, breakdown: { tone: 0, distance: 0, signal: 0 } }
+
+  // Hard floor: too short or empty is auto-zero. "IDK", "n/a", "tbd",
+  // single words — none of these qualify as a rewrite of a headline.
+  const wordCount = (rew.match(/\w+/g) ?? []).length
+  if (!rew || wordCount < 3 || rew.length < 10) {
+    return {
+      total: 0,
+      breakdown: { tone: 0, length_match: 0, signal_kept: 0, distance: 0 },
+      weights: { tone: 0.4, length_match: 0.15, signal_kept: 0.25, distance: 0.2 },
+      ideal: heuristicNeutralRewrite(orig),
+    }
   }
 
   // Tone: penalize loaded words in rewrite
@@ -362,9 +409,15 @@ export function fallbackHeadlineScore(original: string, rewrite: string): Headli
   const distance = 1 - overlap
   const distanceScore = Math.round(100 * (1 - Math.abs(distance - 0.5) * 2))
 
-  const total = Math.round(
-    tone * 0.4 + lenScore * 0.15 + signalScore * 0.25 + distanceScore * 0.2,
-  )
+  const rawTotal =
+    tone * 0.4 + lenScore * 0.15 + signalScore * 0.25 + distanceScore * 0.2
+
+  // Faithfulness gate: if signal preservation is near zero, the answer
+  // didn't engage with the original — collapse the total.
+  const fidelity = Math.min(1, signalScore / 100)
+  const lengthGate = 0.5 + 0.5 * (lenScore / 100)
+  const gate = Math.max(0, Math.min(1, fidelity * lengthGate))
+  const total = Math.round(rawTotal * gate)
 
   return {
     total,
@@ -375,5 +428,6 @@ export function fallbackHeadlineScore(original: string, rewrite: string): Headli
       distance: Math.max(0, distanceScore),
     },
     weights: { tone: 0.4, length_match: 0.15, signal_kept: 0.25, distance: 0.2 },
+    ideal: heuristicNeutralRewrite(orig),
   }
 }

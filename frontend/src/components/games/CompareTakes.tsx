@@ -244,6 +244,7 @@ export default function CompareTakes() {
           initial={chosenTopic}
           prompt="Pick a topic. We'll pull two articles on the same story from opposing-leaning outlets and you call which is more biased."
           onPick={startGame}
+          loading={loading}
         />
         {loading && (
           <div className="mt-4 flex justify-center pb-16">

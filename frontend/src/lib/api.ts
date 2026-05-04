@@ -186,6 +186,7 @@ export type HeadlineRewriteScore = {
   total: number
   breakdown: Record<string, number>
   weights?: Record<string, number>
+  ideal?: string
 }
 
 export async function scoreHeadlineRewrite(

@@ -19,35 +19,52 @@ function hashString(s: string): number {
 }
 
 function dejitter(input: ArticleMarker[]): ArticleMarker[] {
-  const Y_MIN = 0.10
-  const Y_MAX = 0.90
-  const MIN_DX = 0.08
-  const MIN_DY = 0.11
+  const Y_MIN = 0.06
+  const Y_MAX = 0.94
+  const MIN_DX = 0.07
+  const MIN_DY = 0.08
+  const X_JITTER = 0.045 // max ± horizontal nudge from the original x
   const out = input.map((m, i) => {
     const seed = hashString(`${m.src || 'src'}|${m.title || ''}|${i}`)
-    // Map hash to [Y_MIN, Y_MAX]. Use a fractional bucket of 1000 then mod for spread.
-    const t = (seed % 1000) / 1000
-    return { ...m, y: Y_MIN + t * (Y_MAX - Y_MIN) }
+    // Hash → stable y across renders, distributed across the full plot height.
+    const ty = (seed % 1000) / 1000
+    // Hash → stable x-jitter so a cluster of articles at the same score
+    // doesn't form a single vertical column when y tracks are exhausted.
+    const tx = ((seed >>> 10) % 1000) / 1000 - 0.5 // [-0.5, 0.5]
+    return {
+      ...m,
+      x: Math.max(-1, Math.min(1, m.x + tx * X_JITTER * 2)),
+      y: Y_MIN + ty * (Y_MAX - Y_MIN),
+    }
   })
 
   // Iterative collision resolution. Each pass: for any two markers within the
-  // collision zone, push them apart vertically by a small step. Stable after
-  // ~15 passes for typical 12-marker spectrum.
-  const STEP = 0.03
-  for (let pass = 0; pass < 25; pass++) {
+  // collision zone, push them apart in BOTH axes. Y is preferred (more room),
+  // but X gets a small nudge too so densely-packed clusters spread out.
+  const STEP_Y = 0.024
+  const STEP_X = 0.012
+  for (let pass = 0; pass < 40; pass++) {
     let moved = false
     for (let i = 0; i < out.length; i++) {
       for (let j = i + 1; j < out.length; j++) {
         const dx = Math.abs(out[i].x - out[j].x)
         const dy = Math.abs(out[i].y - out[j].y)
         if (dx < MIN_DX && dy < MIN_DY) {
-          // Push the higher-y marker further up, the lower-y marker further down.
+          // Push apart in y first, then nudge x slightly so very-tight x
+          // clusters don't keep colliding.
           if (out[i].y <= out[j].y) {
-            out[i].y = Math.max(Y_MIN, out[i].y - STEP)
-            out[j].y = Math.min(Y_MAX, out[j].y + STEP)
+            out[i].y = Math.max(Y_MIN, out[i].y - STEP_Y)
+            out[j].y = Math.min(Y_MAX, out[j].y + STEP_Y)
           } else {
-            out[i].y = Math.min(Y_MAX, out[i].y + STEP)
-            out[j].y = Math.max(Y_MIN, out[j].y - STEP)
+            out[i].y = Math.min(Y_MAX, out[i].y + STEP_Y)
+            out[j].y = Math.max(Y_MIN, out[j].y - STEP_Y)
+          }
+          if (out[i].x <= out[j].x) {
+            out[i].x = Math.max(-1, out[i].x - STEP_X)
+            out[j].x = Math.min(1, out[j].x + STEP_X)
+          } else {
+            out[i].x = Math.min(1, out[i].x + STEP_X)
+            out[j].x = Math.max(-1, out[j].x - STEP_X)
           }
           moved = true
         }

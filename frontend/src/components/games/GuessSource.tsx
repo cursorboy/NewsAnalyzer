@@ -246,6 +246,7 @@ export default function GuessSource() {
           initial={chosenTopic}
           prompt="Pick a topic. We'll pull a clipping from a different outlet each round and you guess who filed it."
           onPick={startGame}
+          loading={loading}
         />
         {loading && (
           <div className="mt-4 flex justify-center pb-16">

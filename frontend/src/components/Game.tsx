@@ -309,6 +309,7 @@ export default function Game() {
           initial={chosenTopic}
           prompt="Pick a topic. We'll pull ten clippings about it and you place each one on the spectrum."
           onPick={startGame}
+          loading={loading}
         />
         {loadError && <p className="mx-auto max-w-3xl px-6 mt-4 font-serif italic text-accent">{loadError}</p>}
       </div>

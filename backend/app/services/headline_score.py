@@ -170,37 +170,146 @@ Respond with JSON: {{"forward": <float>, "backward": <float>}}"""
     return (f + b) / 2.0
 
 
+def ideal_rewrite(original: str, provider: Optional[ModelProvider] = None) -> str:
+    """Generate a gold-standard neutral rewrite of the headline.
+
+    The model is asked for a single, factually faithful, tone-neutral
+    rewrite of the original — what an AP/Reuters wire copy editor would
+    file. Returned as plain text, no quotes or surrounding punctuation.
+    """
+    p = provider if provider is not None else _resolve(None)
+    if p is None:
+        return _heuristic_neutral_rewrite(original)
+    system = (
+        "You are an AP/Reuters wire copy editor. Given a news headline, "
+        "rewrite it in strictly neutral, wire-service tone. Keep all factual "
+        "content (who/what/where/when). Strip loaded language, intensifiers, "
+        "and value-laden framing. Reply with ONLY the rewritten headline as "
+        "a single line of plain text — no quotes, no labels, no commentary."
+    )
+    user = f"Headline: {original}"
+    try:
+        out = p.complete(system, user).strip()
+        out = out.strip('"').strip("'").strip()
+        if out.lower().startswith("neutral rewrite:"):
+            out = out.split(":", 1)[1].strip()
+        out = out.split("\n", 1)[0].strip()
+        return out or _heuristic_neutral_rewrite(original)
+    except Exception:
+        return _heuristic_neutral_rewrite(original)
+
+
+_LOADED_REPLACEMENTS = {
+    r"\bslam(s|med|ming)?\b": "criticized",
+    r"\bblast(s|ed|ing)?\b": "criticized",
+    r"\bripped?\b": "criticized",
+    r"\btorched?\b": "criticized",
+    r"\bdestroyed?\b": "challenged",
+    r"\bcrush(es|ed|ing)?\b": "defeated",
+    r"\bshock(s|ed|ing)?\b": "unexpected",
+    r"\bbombshell\b": "report",
+    r"\bdesperate(ly)?\b": "",
+    r"\breckless(ly)?\b": "",
+    r"\bradical\b": "",
+    r"\bextreme(ly)?\b": "",
+    r"\bdisastrous\b": "controversial",
+    r"\boutrage(ous|d)?\b": "criticism",
+    r"\bcaved?\b": "agreed",
+    r"\bgrilled?\b": "questioned",
+    r"\bblasted\b": "criticized",
+    r"\bvowed?\b": "said",
+    r"\bunleash(es|ed|ing)?\b": "began",
+    r"\bstunning\b": "notable",
+}
+
+
+def _heuristic_neutral_rewrite(original: str) -> str:
+    """Best-effort offline neutralizer: strip loaded language with regex."""
+    out = original
+    for pat, repl in _LOADED_REPLACEMENTS.items():
+        out = re.sub(pat, repl, out, flags=re.IGNORECASE)
+    out = re.sub(r"\s+", " ", out).strip(" ,.;:")
+    if out and out[0].islower():
+        out = out[0].upper() + out[1:]
+    return out
+
+
 def score_rewrite(original: str, rewrite: str) -> dict:
-    """Aggregate all signals into {total: 0-100, breakdown, weights}."""
+    """Aggregate all signals into {total: 0-100, breakdown (0-100), weights, ideal}.
+
+    A faithfulness gate prevents nonsense answers ("IDK", "n/a", "tbd")
+    from scoring well just because they happen to contain no loaded words
+    and no political bias. If the rewrite doesn't preserve meaning, length,
+    or named entities from the original, the total is collapsed.
+    """
     provider = _resolve(None)
+    rew = (rewrite or "").strip()
+
+    # Hard floor: trivially short or non-content answers cannot score.
+    word_count = len(re.findall(r"\w+", rew))
+    if word_count < 3 or len(rew) < 10:
+        gate_breakdown = {
+            "bias_delta": 0.0,
+            "cosine_meaning": 0.0,
+            "nli_entailment": 0.0,
+            "loaded_reduction": 0.0,
+            "length_similarity": length_similarity(original, rew),
+            "ner_preservation": 0.0,
+            "hedge_penalty": 0.0,
+        }
+        return {
+            "total": 0.0,
+            "breakdown": {k: round(v * 100, 1) for k, v in gate_breakdown.items()},
+            "weights": dict(WEIGHTS),
+            "ideal": ideal_rewrite(original, provider),
+            "note": "Rewrite too short — needs to preserve who/what/where.",
+        }
 
     if provider is None:
-        # No provider configured — degrade gracefully to length+hedge only.
         breakdown = {
             "bias_delta": 0.0,
             "cosine_meaning": 0.0,
             "nli_entailment": 0.0,
             "loaded_reduction": 0.0,
-            "length_similarity": length_similarity(original, rewrite),
+            "length_similarity": length_similarity(original, rew),
             "ner_preservation": 0.0,
-            "hedge_penalty": hedge_penalty(rewrite),
+            "hedge_penalty": hedge_penalty(rew),
         }
     else:
         breakdown = {
-            "bias_delta": bias_delta(original, rewrite, provider),
-            "cosine_meaning": cosine_meaning(original, rewrite, provider),
-            "nli_entailment": nli_entailment(original, rewrite, provider),
-            "loaded_reduction": loaded_language_reduction(original, rewrite, provider),
-            "length_similarity": length_similarity(original, rewrite),
-            "ner_preservation": ner_preservation(original, rewrite, provider),
-            "hedge_penalty": hedge_penalty(rewrite),
+            "bias_delta": bias_delta(original, rew, provider),
+            "cosine_meaning": cosine_meaning(original, rew, provider),
+            "nli_entailment": nli_entailment(original, rew, provider),
+            "loaded_reduction": loaded_language_reduction(original, rew, provider),
+            "length_similarity": length_similarity(original, rew),
+            "ner_preservation": ner_preservation(original, rew, provider),
+            "hedge_penalty": hedge_penalty(rew),
         }
 
+    # Faithfulness gate: a rewrite must preserve meaning AND keep the
+    # original's named entities AND be in the same length ballpark, or
+    # the bias/loaded reductions are meaningless. Multiplicative so a
+    # zero on any one signal collapses the total.
+    fidelity = min(
+        max(breakdown["cosine_meaning"], 0.0),
+        max(breakdown["nli_entailment"], 0.0),
+    )
+    # Soft floor for entity + length so a 0.0 doesn't outright zero the score.
+    structure = (
+        0.4 + 0.6 * max(breakdown["ner_preservation"], 0.0)
+    ) * (
+        0.5 + 0.5 * max(breakdown["length_similarity"], 0.0)
+    )
+    gate = max(0.0, min(1.0, fidelity * structure))
+
     weighted = sum(breakdown[k] * WEIGHTS[k] for k in WEIGHTS)
-    total = max(0.0, min(100.0, round(weighted * 100, 1)))
+    total = max(0.0, min(100.0, round(weighted * gate * 100, 1)))
 
     return {
         "total": total,
-        "breakdown": breakdown,
+        # Scale breakdown to 0..100 so the frontend can render integer scores.
+        "breakdown": {k: round(v * 100, 1) for k, v in breakdown.items()},
         "weights": dict(WEIGHTS),
+        "ideal": ideal_rewrite(original, provider),
+        "gate": round(gate * 100, 1),
     }

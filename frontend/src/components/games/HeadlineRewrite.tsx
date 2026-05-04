@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Article, HeadlineRewriteScore } from '../../lib'
 import { searchArticles, scoreHeadlineRewrite, fallbackSearch, fallbackHeadlineScore } from '../../lib'
+import { heuristicNeutralRewrite } from '../../lib/gameFallbacks'
 import Masthead from '../Masthead'
 import BeatTheNetworkScorecard from '../BeatTheNetworkScorecard'
 import PlayHud from '../PlayHud'
@@ -58,7 +59,9 @@ function SignalRow({ name, value, delay }: { name: string; value: number; delay:
     const t = setTimeout(() => setShown(true), delay)
     return () => clearTimeout(t)
   }, [delay])
-  const animated = useCountUp(shown ? value : 0, 600)
+  // Tolerate both 0..1 (older backend) and 0..100 (new backend + fallback).
+  const scaled = value <= 1.0001 ? value * 100 : value
+  const animated = useCountUp(shown ? scaled : 0, 600)
   return (
     <motion.div
       initial={{ opacity: 0, x: -8 }}
@@ -69,7 +72,7 @@ function SignalRow({ name, value, delay }: { name: string; value: number; delay:
         {name.replace(/_/g, ' ')}
       </dt>
       <dd className="font-serif text-2xl font-semibold text-ink tabular-nums">
-        {Math.round(animated)}
+        {Math.round(animated)}<span className="text-ink/40 text-sm ml-1">/100</span>
       </dd>
     </motion.div>
   )
@@ -328,6 +331,7 @@ export default function HeadlineRewrite() {
           initial={chosenTopic}
           prompt="Pick a topic. We'll pull biased headlines about it and you file a neutral version each round."
           onPick={startGame}
+          loading={loading}
         />
         {loading && (
           <div className="mt-4 flex justify-center pb-16">
@@ -488,6 +492,31 @@ export default function HeadlineRewrite() {
                 <h3 className="mt-2 font-serif text-2xl md:text-3xl font-semibold text-ink">
                   {draft.trim()}
                 </h3>
+                {(() => {
+                  const ideal = (scoreResult?.ideal && scoreResult.ideal.trim())
+                    || heuristicNeutralRewrite(currentArticle.title)
+                  const sameAsUser = ideal.trim().toLowerCase() === draft.trim().toLowerCase()
+                  if (sameAsUser) return null
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4, duration: 0.3 }}
+                      className="mt-6 border-l-2 border-ink/40 pl-5 py-1"
+                    >
+                      <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+                        Ideal example · wire-service tone
+                      </p>
+                      <h3 className="mt-2 font-serif italic text-xl md:text-2xl text-ink/85 leading-snug">
+                        {ideal}
+                      </h3>
+                      <p className="mt-2 font-serif text-[12px] text-ink/45 leading-snug">
+                        One reference rewrite from the network — not the only
+                        correct answer, but a useful target to compare against.
+                      </p>
+                    </motion.div>
+                  )
+                })()}
               </article>
 
               {usedMock && (

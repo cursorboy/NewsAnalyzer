@@ -103,16 +103,53 @@ def _fetch_url(url: str) -> tuple[str, str]:
 
 def _build_article_detail(article_id: str, title: str, body: str, url: str = "", source: str = "") -> dict:
     """Run classifier + dimensions scorer + linguistic services and return an
-    ArticleDetail-shaped dict with all 8 bias dimensions populated."""
+    ArticleDetail-shaped dict with all 8 bias dimensions populated.
+
+    All five LLM-backed calls run IN PARALLEL via asyncio.gather to keep total
+    latency under the Vercel function's 60s ceiling. Sync linguistic functions
+    are wrapped in to_thread so they don't block the event loop.
+    """
     snippet = body[:600] if body else ""
     src = source or extract_domain(url) or "unknown"
 
-    classification = asyncio.run(classify_with_ai(title or "", snippet, src))
-    framing = asyncio.run(score_dimensions(title or "", body or snippet, src))
+    text_for_linguist = body or title
 
-    loaded_phrases = detect_loaded_language(body or title)
-    source_diversity = compute_source_diversity(body or title)
-    headline_body_skew = compute_headline_body_skew(title or "", body or "")
+    async def _run_all():
+        cls_t = classify_with_ai(title or "", snippet, src)
+        dim_t = score_dimensions(title or "", body or snippet, src)
+        loaded_t = asyncio.to_thread(detect_loaded_language, text_for_linguist)
+        sd_t = asyncio.to_thread(compute_source_diversity, text_for_linguist)
+        hbs_t = asyncio.to_thread(compute_headline_body_skew, title or "", body or "")
+        return await asyncio.gather(cls_t, dim_t, loaded_t, sd_t, hbs_t, return_exceptions=True)
+
+    results = asyncio.run(_run_all())
+    classification, framing, loaded_phrases, source_diversity, headline_body_skew = results
+
+    # Surface exceptions in logs so silent fallbacks become visible. Each
+    # downstream consumer below already handles the fallback shape gracefully.
+    for label, val in [
+        ("classify_with_ai", classification),
+        ("score_dimensions", framing),
+        ("detect_loaded_language", loaded_phrases),
+        ("compute_source_diversity", source_diversity),
+        ("compute_headline_body_skew", headline_body_skew),
+    ]:
+        if isinstance(val, Exception):
+            print(f"Debug: {label} raised: {type(val).__name__}: {val}")
+
+    # Replace exceptions with safe shapes so the rest of the function can run.
+    if isinstance(classification, Exception):
+        classification = classify_by_outlet(f"https://{src}", title=title, snippet=snippet)
+    if isinstance(framing, Exception):
+        from app.services.classifier import Dimensions
+        framing = Dimensions(factuality=0.6, economic=0.0, social=0.0,
+                             establishment=0.0, sensationalism=0.0, rationale=None)
+    if isinstance(loaded_phrases, Exception):
+        loaded_phrases = []
+    if isinstance(source_diversity, Exception):
+        source_diversity = {"quoted_entities": [], "anonymous_count": 0, "score": 0.0}
+    if isinstance(headline_body_skew, Exception):
+        headline_body_skew = {"headline_tone": 0.0, "body_tone": 0.0, "delta": 0.0}
 
     dims = {
         "factuality": framing.factuality,
