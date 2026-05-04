@@ -281,30 +281,31 @@ export default function InferenceLab() {
           <div className="grid grid-cols-12 gap-10 items-end">
             <div className="col-span-7">
               <div className="font-sans text-[11px] uppercase tracking-[0.24em] text-ink/55">
-                An exhibit, not a demo
+                A real transformer, in your browser
               </div>
               <h2 className="mt-4 font-display font-black text-ink tracking-mega-tight leading-[0.94] text-[80px]">
-                The model
+                Watch a
                 <br />
-                shows its work.
+                neural net
+                <br />
+                think.
               </h2>
             </div>
             <div className="col-span-5 border-l border-ink/20 pl-10">
               <p className="font-serif text-[18px] italic text-ink/70 leading-snug">
-                Click <span className="not-italic">Load model</span> and a real
-                DistilRoBERTa bias classifier downloads to your browser. Type
-                any sentence and the model, fine-tuned on Wikipedia
-                neutrality-edit pairs by Spinde et al., labels it{' '}
-                <strong>BIASED</strong> or <strong>NEUTRAL</strong>. Every
-                number on this page is computed from the weights running in
-                front of you.
+                Click <span className="not-italic">Load model</span>. ~82 MB of
+                trained weights stream into your tab. Type a sentence and they
+                multiply against it through 6 transformer layers and 72 attention
+                heads to produce a single verdict: <strong>BIASED</strong> or{' '}
+                <strong>NEUTRAL</strong>. Every number on this page is computed
+                from those weights running on your machine.
               </p>
               <p className="mt-4 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
-                Model · valurank/distilroberta-bias · DistilRoBERTa-base · 6
-                layers · 12 heads · trained on the Wiki-Neutrality Corpus
-                (~180k sentence pairs). The production TheBiasGraph score is a
-                separate server-side composite, this is the in-browser linguistic-bias
-                signal that the production system rolls up.
+                This page loads valurank/distilroberta-bias, a public 67M-param
+                model. The production TheBiasGraph runs a custom 139M-param
+                DeBERTa-v3 with 8 task heads, server-side. Different model,
+                same architectural family, full transparency about which is
+                which.
               </p>
             </div>
           </div>
@@ -322,6 +323,39 @@ export default function InferenceLab() {
             />
           </div>
         </motion.section>
+
+        {/* ---------- Honest disclaimer + architecture visualisation ---------- */}
+        <ScrollSection>
+          <div className="border-t border-ink/15 px-12 py-12">
+            <div className="grid grid-cols-12 gap-8 items-start">
+              <div className="col-span-7">
+                <div className="font-sans text-[10px] uppercase tracking-[0.24em] text-accent">
+                  Read this first
+                </div>
+                <h3 className="mt-3 font-display font-black text-ink tracking-display-tight leading-[1.0] text-[34px]">
+                  This is not the production model.
+                </h3>
+                <p className="mt-5 font-serif text-[16px] leading-[1.65] text-ink/80">
+                  The production TheBiasGraph runs a custom 139M-parameter
+                  DeBERTa-v3 with eight task heads, server-side, and is not
+                  downloadable. What loads here is a smaller public cousin in
+                  the same architectural family: <span className="font-mono text-[14px]">valurank/distilroberta-bias</span>,
+                  67M parameters, fine-tuned on Wikipedia neutrality edits.
+                </p>
+                <p className="mt-3 font-serif text-[16px] leading-[1.65] text-ink/80">
+                  The point of this page is not to show you the production
+                  verdict. The point is to let you watch a real transformer
+                  chew on text in your browser, with no server in the loop, so
+                  you can confirm there's no smoke and mirrors. Same plumbing,
+                  smaller model, full transparency.
+                </p>
+              </div>
+              <div className="col-span-5">
+                <NetworkArchitectureFigure />
+              </div>
+            </div>
+          </div>
+        </ScrollSection>
 
         {/* ---------- §I + §II, Model card + Loader ---------- */}
         <ScrollSection>
@@ -455,6 +489,132 @@ export default function InferenceLab() {
 }
 
 // ---------- atomic editorial subcomponents ----------
+
+function NetworkArchitectureFigure() {
+  // 6 encoder layers, 12 attention heads each, 768-dim hidden state.
+  const layerCount = 6
+  const headCount = 12
+  return (
+    <figure className="border-2 border-ink bg-paper p-5">
+      <figcaption className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55 mb-4">
+        Figure · DistilRoBERTa-base · 67M params · 6 layers · 12 heads · d=768
+      </figcaption>
+
+      <div className="font-mono text-[11px] text-ink/70 leading-snug space-y-3">
+        {/* Tokens row */}
+        <div className="flex items-center gap-2">
+          <span className="w-20 text-ink/55 text-[10px] uppercase tracking-[0.18em]">Input</span>
+          <div className="flex-1 flex flex-wrap gap-1">
+            {['<s>', 'tokens', 'go', 'in', 'as', 'ids', '</s>'].map((t) => (
+              <span
+                key={t}
+                className="px-1.5 py-0.5 border border-ink/25 bg-paper-cream text-[10px]"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-center text-ink/30 text-[14px]" aria-hidden>
+          ↓
+        </div>
+
+        {/* Embedding */}
+        <div className="flex items-center gap-2 border border-ink/20 bg-paper-cream px-3 py-2">
+          <span className="w-20 text-ink/55 text-[10px] uppercase tracking-[0.18em]">Embed</span>
+          <span className="text-ink">[seq, 768]</span>
+          <span className="ml-auto text-ink/45 text-[10px]">38.6M params</span>
+        </div>
+
+        <div className="flex justify-center text-ink/30 text-[14px]" aria-hidden>
+          ↓
+        </div>
+
+        {/* Encoder stack — 6 layers, each visualised as 12 head dots */}
+        <div className="border-2 border-ink bg-ink text-paper-cream/90 p-3">
+          <div className="flex items-baseline justify-between mb-2">
+            <span className="font-sans uppercase tracking-[0.18em] text-[9px] text-paper-cream/55">
+              Encoder stack · 6 transformer layers
+            </span>
+            <span className="font-mono text-[9px] text-paper-cream/45">
+              28M params total
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {Array.from({ length: layerCount }, (_, layerIdx) => (
+              <div key={layerIdx} className="flex items-center gap-2">
+                <span className="w-12 text-paper-cream/45 text-[9px]">
+                  L{layerIdx}
+                </span>
+                <div className="flex gap-[3px]">
+                  {Array.from({ length: headCount }, (_, h) => (
+                    <span
+                      key={h}
+                      className="inline-block h-[8px] w-[8px] bg-accent/85"
+                      title={`layer ${layerIdx} head ${h}`}
+                    />
+                  ))}
+                </div>
+                <span className="ml-auto text-paper-cream/45 text-[9px]">
+                  attn + ffn
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 text-paper-cream/45 text-[9.5px] leading-snug">
+            each layer = self-attention (12 heads) + feed-forward + residual + layernorm
+          </div>
+        </div>
+
+        <div className="flex justify-center text-ink/30 text-[14px]" aria-hidden>
+          ↓
+        </div>
+
+        {/* Pooled CLS */}
+        <div className="flex items-center gap-2 border border-ink/20 bg-paper-cream px-3 py-2">
+          <span className="w-20 text-ink/55 text-[10px] uppercase tracking-[0.18em]">Pool</span>
+          <span className="text-ink">[768] = ⟨s⟩</span>
+          <span className="ml-auto text-ink/45 text-[10px]">first-token vector</span>
+        </div>
+
+        <div className="flex justify-center text-ink/30 text-[14px]" aria-hidden>
+          ↓
+        </div>
+
+        {/* Classifier head */}
+        <div className="flex items-center gap-2 border border-ink/20 bg-paper-cream px-3 py-2">
+          <span className="w-20 text-ink/55 text-[10px] uppercase tracking-[0.18em]">Classifier</span>
+          <span className="text-ink">Linear 768 → 2</span>
+          <span className="ml-auto text-ink/45 text-[10px]">~0.6M params</span>
+        </div>
+
+        <div className="flex justify-center text-ink/30 text-[14px]" aria-hidden>
+          ↓
+        </div>
+
+        {/* Output */}
+        <div className="flex items-center gap-2">
+          <span className="w-20 text-ink/55 text-[10px] uppercase tracking-[0.18em]">Output</span>
+          <div className="flex gap-2">
+            <span className="px-2 py-0.5 border border-accent/60 bg-accent/10 text-accent text-[11px]">
+              BIASED
+            </span>
+            <span className="px-2 py-0.5 border border-ink/30 bg-paper-cream text-ink/70 text-[11px]">
+              NEUTRAL
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 border-t border-ink/15 pt-3 font-serif italic text-[12px] text-ink/55 leading-snug">
+        Every red square is a real attention head trained on real data. There
+        are 72 of them in this model (6 × 12). Click run, and the bytes you
+        downloaded multiply against your sentence in exactly this order.
+      </div>
+    </figure>
+  )
+}
 
 function ScrollSection({ children }: { children: React.ReactNode }) {
   return (

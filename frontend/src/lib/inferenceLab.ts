@@ -368,10 +368,23 @@ type ModelOutput = {
 
 type ModelCallable = (enc: unknown) => Promise<ModelOutput>
 
+// transformers.js wraps inputs as Tensor instances. We need access to the
+// underlying mutable typed-array (BigInt64Array / Int32Array) to swap a
+// single token for occlusion without constructing a new Tensor (which loses
+// the prototype the ONNX session relies on for input-name mapping).
 type EncoderInput = {
-  input_ids: { data: ArrayLike<number | bigint>; dims: number[] }
-  attention_mask: { data: ArrayLike<number | bigint>; dims: number[] }
-  token_type_ids?: { data: ArrayLike<number | bigint>; dims: number[] }
+  input_ids: {
+    data: BigInt64Array | Int32Array | number[]
+    dims: number[]
+  }
+  attention_mask: {
+    data: BigInt64Array | Int32Array | number[]
+    dims: number[]
+  }
+  token_type_ids?: {
+    data: BigInt64Array | Int32Array | number[]
+    dims: number[]
+  }
 }
 
 const SPECIAL_TOKEN_LITERALS = new Set([
@@ -397,17 +410,21 @@ async function runOnce(
   return Array.from(out.logits.data as ArrayLike<number>) as number[]
 }
 
-function makeEncodedWithIds(
-  template: EncoderInput,
-  newIds: number[],
-): EncoderInput {
-  const useBigInt = template.input_ids.data.length > 0 && typeof template.input_ids.data[0] === 'bigint'
-  const data: ArrayLike<number | bigint> = useBigInt
-    ? (BigInt64Array.from(newIds.map((n) => BigInt(n))) as unknown as ArrayLike<bigint>)
-    : (Int32Array.from(newIds) as unknown as ArrayLike<number>)
-  return {
-    ...template,
-    input_ids: { data, dims: [...template.input_ids.dims] },
+// Read a single id from the input_ids data buffer (BigInt64Array or Int32Array).
+function readId(data: BigInt64Array | Int32Array | number[], i: number): number | bigint {
+  return data[i]
+}
+
+// Swap a single id in place. Preserves the BigInt-ness of the underlying buffer.
+function writeId(
+  data: BigInt64Array | Int32Array | number[],
+  i: number,
+  newId: number,
+): void {
+  if (data instanceof BigInt64Array) {
+    data[i] = BigInt(newId)
+  } else {
+    ;(data as Int32Array | number[])[i] = newId
   }
 }
 
@@ -458,15 +475,28 @@ export async function runForwardPass(text: string): Promise<InferenceArtifacts> 
   const occlusionDeltas: number[] = new Array(idsArr.length).fill(0)
   let runs = 0
 
+  // Mutate-and-restore the existing tensor's data buffer. We never replace
+  // encoded.input_ids itself because transformers.js needs the original
+  // Tensor prototype for ONNX input-name mapping.
+  const idsBuf = encoded.input_ids.data
   for (let i = 0; i < idsArr.length; i++) {
     const tok = tokenStrings[i]
     if (SPECIAL_TOKEN_LITERALS.has(tok)) continue
     if (maskArr[i] === 0) continue
 
-    const variant = idsArr.slice()
-    variant[i] = maskId
-    const variantEncoded = makeEncodedWithIds(encoded, variant)
-    const variantLogits = await runOnce(callable, variantEncoded)
+    const original = readId(idsBuf, i)
+    writeId(idsBuf, i, maskId)
+    let variantLogits: number[]
+    try {
+      variantLogits = await runOnce(callable, encoded)
+    } finally {
+      // Always restore even if inference threw, so subsequent iterations see clean state.
+      if (typeof original === 'bigint') {
+        ;(idsBuf as BigInt64Array)[i] = original
+      } else {
+        ;(idsBuf as Int32Array | number[])[i] = original as number
+      }
+    }
     const variantProbs = softmax(variantLogits)
     const variantP = variantProbs[argmax]
     occlusionScores[i] = Math.max(0, baseProb - variantP) + Math.max(0, variantP - baseProb) * 0.25
