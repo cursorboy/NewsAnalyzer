@@ -196,11 +196,13 @@ def _build_prompt(title: str, snippet: str, source: str, prior: float | None = N
     if prior is not None:
         direction = "left" if prior < 0 else "right" if prior > 0 else "center"
         prior_block = (
-            f"\nOutlet prior: {source} has a known editorial baseline near {prior:+.1f} "
-            f"({direction}). Use this as a starting anchor, but adjust UP or DOWN based on the "
-            f"specific framing of THIS article. An especially sober AP-style piece from a "
-            f"left-leaning outlet might score 0.3 closer to center; an especially heated piece "
-            f"might score 0.2 further out.\n"
+            f"\nOutlet baseline: {source} has a known editorial leaning near {prior:+.1f} "
+            f"({direction}). Use this as a STARTING anchor only — your job is to evaluate "
+            f"THIS specific article. A sober AP-style piece from a left-leaning outlet may "
+            f"score 0.3 closer to center; an especially heated piece may score 0.2 further out. "
+            f"Your reasoning MUST focus on this article's framing choices — DO NOT write "
+            f"generic statements like 'based on the outlet's editorial stance'. Cite specific "
+            f"words/phrases from the headline or lede.\n"
         )
 
     return f"""
@@ -384,29 +386,17 @@ def classify_by_outlet(url: str) -> Classification:
 
 async def classify_hybrid(title: str, snippet: str, source: str, ai_limit_reached: bool = False) -> Classification:
     """
-    Hybrid classification: Use outlet-based for known sources, AI for unknown sources
-    This dramatically improves speed by avoiding unnecessary AI calls
+    Hybrid classification:
+    - When the OpenAI key is configured, ALWAYS run the LLM (with the outlet
+      prior as a documented anchor in the prompt). This produces article-specific
+      reasoning that quotes the headline/lede instead of returning generic
+      "based on outlet's editorial stance" boilerplate for every article.
+    - When the LLM is unavailable (no key, rate-limited), fall back to the
+      outlet lookup so search still returns scored results — slower path uses
+      the outlet baseline as the score with a generic reasoning.
     """
-    domain = extract_domain(f"https://{source}") or ""
-    
-    # If it's a known outlet, use fast outlet-based classification
-    if domain in OUTLET_BIAS:
-        reasoning = f"Based on {domain}'s known editorial stance and historical reporting patterns."
-        return Classification(
-            score=OUTLET_BIAS[domain], 
-            confidence=0.9, 
-            method="outlet",
-            reasoning=reasoning
-        )
-    
-    # For unknown sources, use AI analysis (but respect limits)
     if not ai_limit_reached and settings.openai_api_key:
         return await classify_with_ai(title, snippet, source)
-    
-    # Fallback for unknown sources when AI limit reached
-    return Classification(
-        score=0.0, 
-        confidence=0.3, 
-        method="unknown",
-        reasoning="Unknown source - no bias information available."
-    ) 
+
+    # Fallback path — no LLM available. Use outlet lookup if known, else unknown.
+    return classify_by_outlet(f"https://{source}")

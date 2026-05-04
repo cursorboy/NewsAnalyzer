@@ -2,37 +2,58 @@ import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { SAMPLE_ARTICLES, type ArticleMarker } from '../lib/sampleArticles'
 
-// Redistribute vertical positions so markers that share roughly the same
-// x-position don't visually stack on top of each other. Strategy:
-// 1) Sort markers by x.
-// 2) Walk left-to-right, placing each marker at the lowest y that doesn't
-//    collide (within MIN_DY) with any previously placed marker whose x is
-//    within MIN_DX. Wrap to next y track when current track is taken.
-// This guarantees no two visible markers share both an x-band and a y-band.
+// Lay out markers with organic-feeling vertical scatter. Strategy:
+// 1) Seed each marker with a pseudo-random y derived from a stable hash of its
+//    source + title — guarantees the same article always lands at the same y
+//    across renders, but the distribution looks like a natural scatter rather
+//    than a horizontal grid.
+// 2) Iteratively resolve collisions by nudging overlapping markers apart in y.
+//    Continuous values (no fixed tracks) keep the result feeling organic.
+function hashString(s: string): number {
+  let h = 2166136261 >>> 0 // FNV offset basis
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return h
+}
+
 function dejitter(input: ArticleMarker[]): ArticleMarker[] {
-  const MIN_DX = 0.10 // x-distance below which markers are considered "close"
-  const TRACKS = [0.14, 0.30, 0.46, 0.62, 0.78] // vertical y-tracks
-  const out = input.map((m) => ({ ...m }))
-  const sorted = out
-    .map((m, i) => ({ m, i }))
-    .sort((a, b) => a.m.x - b.m.x)
-  const placed: { x: number; y: number }[] = []
-  for (const { i } of sorted) {
-    const x = out[i].x
-    // Find the first track that doesn't have a placed marker within MIN_DX of x
-    let chosen = TRACKS[0]
-    for (const ty of TRACKS) {
-      const collides = placed.some(
-        (p) => Math.abs(p.x - x) < MIN_DX && Math.abs(p.y - ty) < 0.001,
-      )
-      if (!collides) {
-        chosen = ty
-        break
+  const Y_MIN = 0.10
+  const Y_MAX = 0.90
+  const MIN_DX = 0.08
+  const MIN_DY = 0.11
+  const out = input.map((m, i) => {
+    const seed = hashString(`${m.src || 'src'}|${m.title || ''}|${i}`)
+    // Map hash to [Y_MIN, Y_MAX]. Use a fractional bucket of 1000 then mod for spread.
+    const t = (seed % 1000) / 1000
+    return { ...m, y: Y_MIN + t * (Y_MAX - Y_MIN) }
+  })
+
+  // Iterative collision resolution. Each pass: for any two markers within the
+  // collision zone, push them apart vertically by a small step. Stable after
+  // ~15 passes for typical 12-marker spectrum.
+  const STEP = 0.03
+  for (let pass = 0; pass < 25; pass++) {
+    let moved = false
+    for (let i = 0; i < out.length; i++) {
+      for (let j = i + 1; j < out.length; j++) {
+        const dx = Math.abs(out[i].x - out[j].x)
+        const dy = Math.abs(out[i].y - out[j].y)
+        if (dx < MIN_DX && dy < MIN_DY) {
+          // Push the higher-y marker further up, the lower-y marker further down.
+          if (out[i].y <= out[j].y) {
+            out[i].y = Math.max(Y_MIN, out[i].y - STEP)
+            out[j].y = Math.min(Y_MAX, out[j].y + STEP)
+          } else {
+            out[i].y = Math.min(Y_MAX, out[i].y + STEP)
+            out[j].y = Math.max(Y_MIN, out[j].y - STEP)
+          }
+          moved = true
+        }
       }
-      chosen = ty // fallback: keep last track if all collide
     }
-    out[i].y = chosen
-    placed.push({ x, y: chosen })
+    if (!moved) break
   }
   return out
 }
