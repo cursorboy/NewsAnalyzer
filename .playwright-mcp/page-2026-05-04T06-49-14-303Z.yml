@@ -1,0 +1,58 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e43]:
+    - link "← Quit" [ref=e44] [cursor=pointer]:
+      - /url: /play
+    - generic [ref=e46]:
+      - generic [ref=e47]: Game 02
+      - generic [ref=e48]: Guess the Source
+    - generic [ref=e49]:
+      - generic [ref=e50]:
+        - generic [ref=e51]: You
+        - generic [ref=e53]: "1"
+      - generic [ref=e54]: —
+      - generic [ref=e55]:
+        - generic [ref=e57]: "1"
+        - generic [ref=e58]: Network
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - text: "1"
+        - generic [ref=e61]: / 10
+      - button "Mute sound" [ref=e73] [cursor=pointer]: Sound on
+  - generic:
+    - generic: "+1"
+  - main [ref=e74]:
+    - generic [ref=e98]:
+      - generic [ref=e101]:
+        - generic [ref=e102]:
+          - generic [ref=e103]: ✓
+          - generic [ref=e104]: Filed perfectly.
+        - paragraph [ref=e105]: Filed by MSNBC.
+      - article [ref=e106]:
+        - paragraph [ref=e107]: Filed by · MSNBC
+        - heading "Reckless GOP plan slams working families with deepest cuts in years" [level=2] [ref=e108]
+      - generic [ref=e109]:
+        - generic [ref=e110]:
+          - paragraph [ref=e111]: Your pick
+          - paragraph [ref=e112]: MSNBC
+        - generic [ref=e113]:
+          - paragraph [ref=e114]: Verdict
+          - paragraph [ref=e115]: Correct
+        - generic [ref=e116]:
+          - paragraph [ref=e117]: Round
+          - paragraph [ref=e118]: You 1 · Net 1
+      - button "Next round" [ref=e120] [cursor=pointer]:
+        - text: Next round
+        - generic [ref=e121]: →

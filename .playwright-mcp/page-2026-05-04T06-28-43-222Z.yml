@@ -1,0 +1,49 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e39]:
+    - generic [ref=e40]:
+      - paragraph [ref=e42]: Game 01 · Bias Detective
+      - generic [ref=e43]:
+        - button "Unmute" [ref=e44] [cursor=pointer]: ♪ Off
+        - generic [ref=e46]:
+          - text: "2"
+          - generic [ref=e47]: / 10
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic [ref=e62]: You
+        - generic [ref=e63]: "1"
+      - generic [ref=e64]: vs.
+      - generic [ref=e65]:
+        - generic [ref=e66]: TheBiasGraph v2
+        - generic [ref=e67]: "1"
+  - main [ref=e68]:
+    - generic [ref=e132]:
+      - article [ref=e133]:
+        - paragraph [ref=e134]: Clipping
+        - heading "Climate scientists warn Earth is hurtling toward catastrophic tipping points" [level=2] [ref=e135]
+        - paragraph [ref=e136]: Leading climate researchers issued a dire warning Tuesday, saying years of inaction have pushed the planet dangerously close to irreversible collapse of key ecosystems.
+        - paragraph [ref=e137]: Source withheld until reveal
+      - generic [ref=e138]:
+        - paragraph [ref=e139]: Drag the marker to where you think this clipping lives.
+        - generic [ref=e143]:
+          - generic [ref=e144]: Liberal
+          - generic [ref=e145]: Center
+          - generic [ref=e146]: Conservative
+      - generic [ref=e147]:
+        - link "← Quit session" [ref=e148] [cursor=pointer]:
+          - /url: /play
+        - button "File your guess" [disabled] [ref=e149]:
+          - text: File your guess
+          - generic [ref=e150]: →

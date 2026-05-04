@@ -1,0 +1,74 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e39]:
+    - generic [ref=e40]:
+      - paragraph [ref=e41]: Game 04 · Headline Rewrite
+      - generic [ref=e42]:
+        - button "♪ Off" [ref=e43] [cursor=pointer]
+        - generic [ref=e45]:
+          - text: "1"
+          - generic [ref=e46]: / 10
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - generic [ref=e61]: You
+        - generic [ref=e62]: "6"
+      - generic [ref=e63]: vs.
+      - generic [ref=e64]:
+        - generic [ref=e65]: TheBiasGraph v2
+        - generic [ref=e66]: "8"
+  - main [ref=e67]:
+    - generic [ref=e81]:
+      - generic [ref=e84]:
+        - generic [ref=e85]: ~Half right
+        - generic [ref=e86]: Decent — 58/100. Watch for loaded words.
+      - article [ref=e87]:
+        - paragraph [ref=e88]: Original
+        - heading "Trump rallies fired-up base as crowd erupts over patriotic agenda" [level=3] [ref=e89]
+        - paragraph [ref=e90]: Your rewrite
+        - heading "Trump addresses supporters at campaign rally on policy priorities" [level=3] [ref=e91]
+      - paragraph [ref=e92]: Offline mode · scored locally on tone, length, signal preservation, and distance.
+      - generic [ref=e93]:
+        - generic [ref=e94]:
+          - paragraph [ref=e95]: Network grade
+          - paragraph [ref=e96]: 58/ 100
+        - generic [ref=e97]:
+          - generic [ref=e98]:
+            - term [ref=e99]: tone
+            - definition [ref=e100]: "100"
+          - generic [ref=e101]:
+            - term [ref=e102]: length match
+            - definition [ref=e103]: "100"
+          - generic [ref=e104]:
+            - term [ref=e105]: signal kept
+            - definition [ref=e106]: "5"
+          - generic [ref=e107]:
+            - term [ref=e108]: distance
+            - definition [ref=e109]: "11"
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - paragraph [ref=e112]: Round
+          - paragraph [ref=e113]: You 6 · Net 8
+        - generic [ref=e114]:
+          - paragraph [ref=e115]: Cumulative
+          - paragraph [ref=e116]: 6 vs 8
+        - generic [ref=e117]:
+          - paragraph [ref=e118]: Streak
+          - paragraph [ref=e119]: "0"
+      - generic [ref=e120]:
+        - link "← Quit session" [ref=e121] [cursor=pointer]:
+          - /url: /play
+        - button "Next round" [ref=e122] [cursor=pointer]:
+          - text: Next round
+          - generic [ref=e123]: →

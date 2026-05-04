@@ -1,0 +1,35 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "NeuralBias" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - button "NeuralBias v2 · 10,000hr" [ref=e11] [cursor=pointer]:
+        - generic [ref=e15]: NeuralBias v2
+        - generic [ref=e16]: ·
+        - generic [ref=e17]: 10,000hr
+  - main [ref=e18]:
+    - paragraph [ref=e19]: Game 03 · Compare Two Takes
+    - heading "Same story. Two desks." [level=1] [ref=e20]:
+      - text: Same story.
+      - text: Two desks.
+    - paragraph [ref=e21]: Two articles per round on the same topic. Decide which is more biased — and which way it leans.
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - paragraph [ref=e24]: Read
+        - paragraph [ref=e25]: Two takes side by side.
+      - generic [ref=e26]:
+        - paragraph [ref=e27]: Pick
+        - paragraph [ref=e28]: "More biased: A, B, or Even."
+      - generic [ref=e29]:
+        - paragraph [ref=e30]: Score
+        - paragraph [ref=e31]: +1 magnitude · +1 direction.
+    - generic [ref=e32]:
+      - paragraph [ref=e33]: Best ever 0
+      - generic [ref=e34]:
+        - link "← Other games" [ref=e35] [cursor=pointer]:
+          - /url: /play
+        - button "Begin session" [ref=e36] [cursor=pointer]:
+          - text: Begin session
+          - generic [ref=e37]: →

@@ -1,0 +1,68 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e42]:
+    - generic [ref=e43]:
+      - link "← Quit" [ref=e44] [cursor=pointer]:
+        - /url: /play
+      - generic [ref=e46]:
+        - generic [ref=e47]: Game 03
+        - generic [ref=e48]: Compare Two Takes
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - generic [ref=e51]: You
+          - generic [ref=e53]: "0"
+        - generic [ref=e54]: —
+        - generic [ref=e55]:
+          - generic [ref=e57]: "0"
+          - generic [ref=e58]: Network
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - text: "1"
+          - generic [ref=e61]: / 10
+        - button "Mute sound" [ref=e73] [cursor=pointer]: Sound on
+    - generic [ref=e74]: Topic · "inflation"
+  - main [ref=e75]:
+    - generic [ref=e76]:
+      - generic [ref=e77]:
+        - article [ref=e78] [cursor=pointer]:
+          - generic [ref=e79]:
+            - paragraph [ref=e80]: Take A
+            - paragraph [ref=e81]: The Wall Street Journal
+          - heading "Federal Reserve holds interest rates steady, citing mixed signals" [level=3] [ref=e82]
+          - paragraph [ref=e83]: The Federal Reserve left its benchmark interest rate unchanged Wednesday, with Chair Jerome Powell saying officials want more evidence inflation is sustainably easing.
+        - article [ref=e84] [cursor=pointer]:
+          - generic [ref=e85]:
+            - paragraph [ref=e86]: Take B
+            - paragraph [ref=e87]: Bloomberg
+          - heading "Treasury releases analysis of new tax legislation impact" [level=3] [ref=e88]
+          - paragraph [ref=e89]: The Treasury Department published a 60-page assessment Tuesday projecting the legislation would reduce federal revenue by $1.4 trillion over a decade.
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - paragraph [ref=e92]: More biased
+          - generic [ref=e93]:
+            - button "A" [ref=e94] [cursor=pointer]
+            - button "B" [ref=e95] [cursor=pointer]
+            - button "Equal" [ref=e96] [cursor=pointer]
+        - generic [ref=e97]:
+          - paragraph [ref=e98]: Direction of dominant bias
+          - generic [ref=e99]:
+            - button "Liberal" [ref=e100] [cursor=pointer]
+            - button "Center" [ref=e101] [cursor=pointer]
+            - button "Conservative" [ref=e102] [cursor=pointer]
+      - generic [ref=e103]:
+        - generic [ref=e104]: Round 1 of 10
+        - button "File your call" [disabled] [ref=e105]:
+          - text: File your call
+          - generic [ref=e106]: →

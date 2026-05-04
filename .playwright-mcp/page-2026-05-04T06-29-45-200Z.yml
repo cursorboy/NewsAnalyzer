@@ -1,0 +1,66 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e39]:
+    - generic [ref=e40]:
+      - generic [ref=e41]:
+        - paragraph [ref=e42]: Game 03 · Compare Two Takes
+        - generic [ref=e43]: Topic · "healthcare"
+      - generic [ref=e44]:
+        - button "♪ Off" [ref=e45] [cursor=pointer]
+        - generic [ref=e47]:
+          - text: "1"
+          - generic [ref=e48]: / 10
+    - generic [ref=e61]:
+      - generic [ref=e62]:
+        - generic [ref=e63]: You
+        - generic [ref=e64]: "0"
+      - generic [ref=e65]: vs.
+      - generic [ref=e66]:
+        - generic [ref=e67]: TheBiasGraph v2
+        - generic [ref=e68]: "0"
+  - main [ref=e69]:
+    - generic [ref=e70]:
+      - generic [ref=e71]:
+        - article [ref=e72]:
+          - generic [ref=e73]:
+            - paragraph [ref=e74]: Take A
+            - paragraph [ref=e75]: The New York Times
+          - heading "Medicare drug-price negotiation delivers historic relief for seniors" [level=3] [ref=e76]
+          - paragraph [ref=e77]: Seniors will finally see meaningful relief from out-of-control prescription costs thanks to landmark Medicare negotiation power, advocates celebrated.
+        - article [ref=e78]:
+          - generic [ref=e79]:
+            - paragraph [ref=e80]: Take B
+            - paragraph [ref=e81]: The Wall Street Journal
+          - heading "Drug-price negotiation will throttle innovation, industry warns" [level=3] [ref=e82]
+          - paragraph [ref=e83]: Pharmaceutical executives sounded the alarm Tuesday, warning that government price controls would devastate the U.S. biotech pipeline and cost lives down the road.
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - paragraph [ref=e86]: More biased
+          - generic [ref=e87]:
+            - button "A" [ref=e88] [cursor=pointer]
+            - button "B" [ref=e89] [cursor=pointer]
+            - button "Equal" [ref=e90] [cursor=pointer]
+        - generic [ref=e91]:
+          - paragraph [ref=e92]: Direction of dominant bias
+          - generic [ref=e93]:
+            - button "Liberal" [ref=e94] [cursor=pointer]
+            - button "Center" [ref=e95] [cursor=pointer]
+            - button "Conservative" [ref=e96] [cursor=pointer]
+      - generic [ref=e97]:
+        - link "← Quit session" [ref=e98] [cursor=pointer]:
+          - /url: /play
+        - button "File your call" [ref=e99] [cursor=pointer]:
+          - text: File your call
+          - generic [ref=e100]: →

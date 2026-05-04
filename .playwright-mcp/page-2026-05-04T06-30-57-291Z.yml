@@ -1,0 +1,159 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - main [ref=e19]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: Vol. II
+        - generic [ref=e24]: No. v2.0.0
+        - generic [ref=e26]: A reading instrument for the comparison bias of news.
+      - generic [ref=e27]:
+        - generic [ref=e28]: The model issue
+        - heading "Custom neural network trained on comparison bias." [level=1] [ref=e29]:
+          - text: Custom neural network trained on
+          - text: comparison bias.
+        - paragraph [ref=e30]: Score any article across 8 dimensions in under a second.
+        - generic [ref=e31]:
+          - tablist "Input mode" [ref=e32]:
+            - tab "Search news" [selected] [ref=e33] [cursor=pointer]
+            - tab "Paste article" [ref=e34] [cursor=pointer]
+            - tab "From URL" [ref=e35] [cursor=pointer]
+          - generic [ref=e37]:
+            - generic [ref=e38]: Topic
+            - textbox "e.g. federal interest rate decision" [ref=e39]
+            - button "Search →" [ref=e40] [cursor=pointer]
+          - generic [ref=e41]:
+            - generic [ref=e42]: "Try:"
+            - button "student loans" [ref=e43] [cursor=pointer]
+            - button "immigration" [ref=e44] [cursor=pointer]
+            - button "climate policy" [ref=e45] [cursor=pointer]
+            - button "gun control" [ref=e46] [cursor=pointer]
+    - generic [ref=e47]:
+      - generic [ref=e49]: Play TheBiasGraph
+      - heading "Beat the network at its own game." [level=2] [ref=e51]
+      - generic [ref=e52]:
+        - link "Game 01 Best 1 Bias Detective Drag a headline to the spot on the spectrum where you think it lands. Liberal Conservative Play" [ref=e53] [cursor=pointer]:
+          - /url: /play/detective
+          - generic [ref=e54]:
+            - generic [ref=e55]: Game 01
+            - generic [ref=e56]: Best 1
+          - heading "Bias Detective" [level=3] [ref=e57]
+          - paragraph [ref=e58]: Drag a headline to the spot on the spectrum where you think it lands.
+          - generic [ref=e65]:
+            - generic [ref=e66]: Liberal
+            - generic [ref=e67]: Conservative
+          - generic [ref=e68]:
+            - text: Play
+            - generic [ref=e69]: →
+        - link "Game 02 Best 1 Guess the Source Read a clipping with the masthead removed. Pick the outlet that filed it. NYT WSJ Fox AP Play" [ref=e70] [cursor=pointer]:
+          - /url: /play/source
+          - generic [ref=e71]:
+            - generic [ref=e72]: Game 02
+            - generic [ref=e73]: Best 1
+          - heading "Guess the Source" [level=3] [ref=e74]
+          - paragraph [ref=e75]: Read a clipping with the masthead removed. Pick the outlet that filed it.
+          - generic [ref=e77]:
+            - generic [ref=e78]: NYT
+            - generic [ref=e79]: WSJ
+            - generic [ref=e80]: Fox
+            - generic [ref=e81]: AP
+          - generic [ref=e82]:
+            - text: Play
+            - generic [ref=e83]: →
+        - link "Game 03 New Compare Two Takes Two articles, same story. Decide which is more biased and in which direction. A B Play" [ref=e84] [cursor=pointer]:
+          - /url: /play/compare
+          - generic [ref=e85]:
+            - generic [ref=e86]: Game 03
+            - generic [ref=e87]: New
+          - heading "Compare Two Takes" [level=3] [ref=e88]
+          - paragraph [ref=e89]: Two articles, same story. Decide which is more biased and in which direction.
+          - generic [ref=e91]:
+            - generic [ref=e93]: A
+            - generic [ref=e98]: B
+          - generic [ref=e102]:
+            - text: Play
+            - generic [ref=e103]: →
+        - link "Game 04 Best 6 Headline Rewrite Take a loaded headline and file a neutral version. Graded on tone and signal. Reckless GOP plan slams working families House passes spending bill on party-line vote Play" [ref=e104] [cursor=pointer]:
+          - /url: /play/rewrite
+          - generic [ref=e105]:
+            - generic [ref=e106]: Game 04
+            - generic [ref=e107]: Best 6
+          - heading "Headline Rewrite" [level=3] [ref=e108]
+          - paragraph [ref=e109]: Take a loaded headline and file a neutral version. Graded on tone and signal.
+          - generic [ref=e111]:
+            - paragraph [ref=e112]: Reckless GOP plan slams working families
+            - paragraph [ref=e113]: House passes spending bill on party-line vote
+          - generic [ref=e114]:
+            - text: Play
+            - generic [ref=e115]: →
+    - generic [ref=e116]:
+      - generic [ref=e118]: Try it with your own article
+      - heading "Paste any article body or a URL. See the full breakdown without leaving this page." [level=2] [ref=e120]:
+        - text: Paste any article body or a URL.
+        - text: See the full breakdown without leaving this page.
+      - generic [ref=e122]:
+        - generic [ref=e123]:
+          - button "Paste text" [ref=e124] [cursor=pointer]
+          - button "From URL" [ref=e125] [cursor=pointer]
+          - generic [ref=e126]: Live · 8 dimensions
+        - generic [ref=e127]:
+          - generic [ref=e128]:
+            - generic [ref=e129]: Article body
+            - textbox "Article body" [ref=e130]:
+              - /placeholder: Paste an article body. The model needs at least a paragraph to score reliably.
+          - generic [ref=e131]:
+            - button "Run analysis →" [ref=e132] [cursor=pointer]
+            - generic [ref=e133]: Inline · summary view
+            - link "Open full Analyze →" [ref=e134] [cursor=pointer]:
+              - /url: /analyze
+    - generic [ref=e136]:
+      - generic [ref=e137]:
+        - generic [ref=e138]: Methodology
+        - generic [ref=e140]: Research note · v2.0.0
+      - generic [ref=e141]:
+        - generic [ref=e142]:
+          - heading "On comparison bias." [level=3] [ref=e143]
+          - paragraph [ref=e144]: "Most bias detectors score articles in isolation against a fixed left/right rubric. Comparison bias is different: the model is trained to score an article relative to how the same factual story is framed across a curated reference corpus of 10,247 hours of paired coverage. For every story, the model sees how Reuters wrote the headline, how the AP framed the lede, how MSNBC chose its verbs, and how Fox structured its quotes — then learns the latent axes along which they diverge."
+          - heading "Why eight dimensions." [level=3] [ref=e145]
+          - paragraph [ref=e146]: A single left-right number collapses what's actually four orthogonal signals — economic framing, social framing, establishment posture, sensationalism — and three lexical signals — loaded language density, source diversity, and the headline-body skew. Each is its own classification head trained against the comparison corpus; the displayed score is a learned weighted composite. Outlet identity is not an input — every score is computed from the article's text alone.
+          - generic [ref=e147]:
+            - generic [ref=e148]:
+              - term [ref=e149]: Corpus
+              - definition [ref=e150]: 10,247h
+            - generic [ref=e151]:
+              - term [ref=e152]: Paired articles
+              - definition [ref=e153]: 1.24M
+            - generic [ref=e154]:
+              - term [ref=e155]: Classification heads
+              - definition [ref=e156]: "8"
+            - generic [ref=e157]:
+              - term [ref=e158]: Reviewer concordance
+              - definition [ref=e159]: 94%
+        - complementary [ref=e160]:
+          - paragraph [ref=e161]: The architecture, the training pipeline, the labeling protocol — happy to walk through any of it.
+          - link "Want to see how I built it → Let’s chat" [ref=e162] [cursor=pointer]:
+            - /url: https://linkedin.com/in/REPLACE_ME
+            - generic [ref=e163]: Want to see how I built it
+            - generic [ref=e164]: → Let’s chat
+  - contentinfo [ref=e165]:
+    - generic [ref=e166]:
+      - generic [ref=e167]:
+        - generic [ref=e168]: TheBiasGraph
+        - generic [ref=e169]: ·
+        - generic [ref=e170]: v2.0.0
+      - generic [ref=e171]:
+        - link "API status" [ref=e172] [cursor=pointer]:
+          - /url: /api-status
+        - generic [ref=e173]: ©
+        - generic [ref=e174]: "2026"

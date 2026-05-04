@@ -1,0 +1,48 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e43]:
+    - link "← Quit" [ref=e44] [cursor=pointer]:
+      - /url: /play
+    - generic [ref=e46]:
+      - generic [ref=e47]: Game 04
+      - generic [ref=e48]: Headline Rewrite
+    - generic [ref=e49]:
+      - generic [ref=e50]:
+        - generic [ref=e51]: You
+        - generic [ref=e53]: "0"
+      - generic [ref=e54]: —
+      - generic [ref=e55]:
+        - generic [ref=e57]: "0"
+        - generic [ref=e58]: Network
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - text: "1"
+        - generic [ref=e61]: / 10
+      - button "Mute sound" [ref=e73] [cursor=pointer]: Sound on
+  - main [ref=e74]:
+    - generic [ref=e75]:
+      - article [ref=e76]:
+        - paragraph [ref=e77]: Original headline · bias 0.74 · Fox News
+        - heading "Senate Democrats torpedo bipartisan border deal, siding with open-borders activists" [level=2] [ref=e78]
+        - paragraph [ref=e79]: In a stunning betrayal of border state communities, Senate Democrats killed a bipartisan compromise this week, capitulating to far-left pressure groups.
+      - generic [ref=e80]:
+        - generic [ref=e81]: Your neutral rewrite
+        - textbox "Same facts, no loaded language…" [ref=e82]
+        - paragraph [ref=e83]: 0 chars · 0 words
+      - generic [ref=e84]:
+        - generic [ref=e85]: Round 1 of 10
+        - button "File rewrite" [disabled] [ref=e86]:
+          - text: File rewrite
+          - generic [ref=e87]: →

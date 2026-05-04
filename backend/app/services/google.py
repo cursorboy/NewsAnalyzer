@@ -27,8 +27,8 @@ class APIStatus:
         
     def record_error(self, error_type: str, message: str):
         self.failed_requests += 1
-        self.last_error = {"type": error_type, "message": message, "time": datetime.now()}
-        
+        self.last_error = {"type": error_type, "message": message, "time": datetime.now().isoformat()}
+
         if "quota" in message.lower() or "limit" in message.lower():
             self.quota_exceeded = True
             self.rate_limited = True

@@ -1,0 +1,35 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "NeuralBias" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - button "NeuralBias v2 · 10,000hr" [ref=e11] [cursor=pointer]:
+        - generic [ref=e15]: NeuralBias v2
+        - generic [ref=e16]: ·
+        - generic [ref=e17]: 10,000hr
+  - main [ref=e18]:
+    - paragraph [ref=e19]: Game 02 · Guess the Source
+    - heading "The masthead is missing." [level=1] [ref=e20]:
+      - text: The masthead
+      - text: is missing.
+    - paragraph [ref=e21]: Read the clipping. Pick the outlet that filed it from four candidates. Streaks pay.
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - paragraph [ref=e24]: Read
+        - paragraph [ref=e25]: Title and snippet, source hidden.
+      - generic [ref=e26]:
+        - paragraph [ref=e27]: Pick
+        - paragraph [ref=e28]: Four outlets per round.
+      - generic [ref=e29]:
+        - paragraph [ref=e30]: Score
+        - paragraph [ref=e31]: +1 right · streak bonus.
+    - generic [ref=e32]:
+      - paragraph [ref=e33]: Best ever 0
+      - generic [ref=e34]:
+        - link "← Other games" [ref=e35] [cursor=pointer]:
+          - /url: /play
+        - button "Begin session" [ref=e36] [cursor=pointer]:
+          - text: Begin session
+          - generic [ref=e37]: →

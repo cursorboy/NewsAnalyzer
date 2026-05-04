@@ -1,20 +1,42 @@
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import type { Article } from '../lib'
-import { searchArticles } from '../lib'
+import { searchArticles, fallbackSearch } from '../lib'
 import { useArticles } from '../context/ArticlesContext'
+import Masthead from './Masthead'
+import BeatTheNetworkScorecard from './BeatTheNetworkScorecard'
+import PlayHud from './PlayHud'
+import RoundFeedback from './RoundFeedback'
+import Countdown from './Countdown'
+import PointBurst from './PointBurst'
+import { useGameScore } from '../hooks/useGameScore'
+import { sfx } from '../lib/gameSound'
+import { copy } from '../lib/microcopy'
 
-interface GameState {
-  score: number
-  streak: number
-  highScore: number
-  round: number
-  gamePhase: 'menu' | 'playing' | 'revealed' | 'gameOver'
-  currentArticle: Article | null
-  userGuess: number | null
-  roundScore: number
-  accuracy: number
+const TOTAL_ROUNDS = 10
+const STORAGE_KEY = 'biasDetectiveHighScore'
+
+const FALLBACK_TOPICS = [
+  'climate change',
+  'immigration policy',
+  'healthcare reform',
+  'tax policy',
+  'education funding',
+  'gun control',
+  'trade policy',
+  'social security',
+  'minimum wage',
+]
+
+type Phase = 'menu' | 'countdown' | 'playing' | 'revealed' | 'gameOver'
+
+function biasLabel(score: number): string {
+  if (score <= -0.7) return 'Far Left'
+  if (score <= -0.3) return 'Left'
+  if (score < 0.3) return 'Center'
+  if (score < 0.7) return 'Right'
+  return 'Far Right'
 }
 
 export default function Game() {
@@ -22,604 +44,572 @@ export default function Game() {
   const navigate = useNavigate()
   const { getCachedArticles, cacheArticles, cachedArticles } = useArticles()
   const searchQuery = searchParams.get('q') || ''
-  
-  const [gameState, setGameState] = useState<GameState>({
-    score: 0,
-    streak: 0,
-    highScore: parseInt(localStorage.getItem('biasDetectiveHighScore') || '0'),
-    round: 0,
-    gamePhase: 'menu',
-    currentArticle: null,
-    userGuess: null,
-    roundScore: 0,
-    accuracy: 0
-  })
-  
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragPosition, setDragPosition] = useState(0)
+
+  const score = useGameScore({ totalRounds: TOTAL_ROUNDS, storageKey: STORAGE_KEY })
+  const [phase, setPhase] = useState<Phase>('menu')
   const [articles, setArticles] = useState<Article[]>([])
+  const [currentArticle, setCurrentArticle] = useState<Article | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  const [dragPosition, setDragPosition] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const [userGuess, setUserGuess] = useState<number | null>(null)
+  const [roundUserPoints, setRoundUserPoints] = useState(0)
+  const [roundModelPoints, setRoundModelPoints] = useState(0)
+  const [outcome, setOutcome] = useState<'correct' | 'wrong'>('wrong')
+  const [burst, setBurst] = useState<{ show: boolean; pts: number; variant: 'correct' | 'wrong' }>({ show: false, pts: 0, variant: 'correct' })
+  const [markerLanded, setMarkerLanded] = useState(false)
   const spectrumRef = useRef<HTMLDivElement>(null)
 
-  // Game topics for variety (fallback if no search query)
-  const gameTopics = [
-    'climate change', 'immigration policy', 'healthcare reform', 
-    'tax policy', 'education funding', 'gun control',
-    'trade policy', 'social security', 'minimum wage'
-  ]
-
-  // Process articles for game use (filtering and organizing)
-  const processArticlesForGame = (articles: Article[]) => {
-    // Filter articles with known bias scores for accurate scoring
-    const knownBiasArticles = articles.filter(article => 
-      (article.method === 'outlet' || article.method === 'ai') && article.confidence > 0.5
+  const processArticlesForGame = (incoming: Article[]): Article[] => {
+    const known = incoming.filter(
+      (a) => (a.method === 'outlet' || a.method === 'ai') && a.confidence > 0.5,
     )
-    
-    console.log(`Found ${knownBiasArticles.length} articles with good confidence scores`)
-    
-    // If we have enough articles, try to get diversity across the spectrum
-    if (knownBiasArticles.length >= 8) {
-      const leftArticles = knownBiasArticles.filter(a => a.spectrum_score <= -0.3)
-      const centerArticles = knownBiasArticles.filter(a => a.spectrum_score > -0.3 && a.spectrum_score < 0.3)
-      const rightArticles = knownBiasArticles.filter(a => a.spectrum_score >= 0.3)
-      
-      // Mix articles from different parts of spectrum
-      const mixedArticles = [
-        ...leftArticles.slice(0, 3),
-        ...centerArticles.slice(0, 4), 
-        ...rightArticles.slice(0, 3)
-      ]
-      
-      // Shuffle for random order in game
-      const shuffled = mixedArticles.sort(() => Math.random() - 0.5)
-      
-      if (shuffled.length >= 5) {  // Need at least 5 articles for a good game
-        console.log(`Using ${shuffled.length} diverse articles for game`)
-        setArticles(shuffled)
-        return shuffled
-      }
+    if (known.length >= 8) {
+      const left = known.filter((a) => a.spectrum_score <= -0.3)
+      const center = known.filter((a) => a.spectrum_score > -0.3 && a.spectrum_score < 0.3)
+      const right = known.filter((a) => a.spectrum_score >= 0.3)
+      const mixed = [...left.slice(0, 4), ...center.slice(0, 3), ...right.slice(0, 4)]
+      return mixed.sort(() => Math.random() - 0.5).slice(0, TOTAL_ROUNDS)
     }
-    
-    // Fallback: use any articles we have with good confidence
-    if (knownBiasArticles.length >= 3) {
-      const shuffledAll = knownBiasArticles.sort(() => Math.random() - 0.5).slice(0, 10)
-      console.log(`Using ${shuffledAll.length} articles (fallback mode)`)
-      setArticles(shuffledAll)
-      return shuffledAll
+    if (known.length >= 3) {
+      return known.sort(() => Math.random() - 0.5).slice(0, TOTAL_ROUNDS)
     }
-    
     return []
   }
 
-  // Fetch articles for the game
-  const fetchGameArticles = async () => {
-    try {
-      // If we have a search query, use it
-      if (searchQuery) {
-        console.log(`Looking for cached articles for query: "${searchQuery}"`)
-        console.log('Available cached queries:', Object.keys(cachedArticles))
-        
-        const cachedArticlesData = getCachedArticles(searchQuery)
-        if (cachedArticlesData && cachedArticlesData.length > 0) {
-          console.log(`✅ Using ${cachedArticlesData.length} cached articles for "${searchQuery}" - no API call needed!`)
-          return processArticlesForGame(cachedArticlesData)
-        }
-        
-        console.log(`❌ No cached articles found for "${searchQuery}", making API call...`)
+  const fetchGameArticles = async (): Promise<Article[]> => {
+    if (searchQuery) {
+      const cached = getCachedArticles(searchQuery)
+      if (cached && cached.length > 0) {
+        const processed = processArticlesForGame(cached)
+        if (processed.length >= 3) return processed
+      }
+      try {
         const data = await searchArticles(searchQuery)
         cacheArticles(searchQuery, data.articles)
-        return processArticlesForGame(data.articles)
+        const processed = processArticlesForGame(data.articles)
+        if (processed.length >= 3) return processed
+      } catch {
+        /* fall through */
       }
-      
-      // No search query - check if we have ANY cached articles first
-      const allCachedTopics = Object.keys(cachedArticles)
-      if (allCachedTopics.length > 0) {
-        // Use the most recently cached topic
-        const recentTopic = allCachedTopics[allCachedTopics.length - 1]
-        const recentCachedArticles = getCachedArticles(recentTopic)
-        if (recentCachedArticles && recentCachedArticles.length > 0) {
-          console.log(`Using ${recentCachedArticles.length} cached articles for "${recentTopic}" - no API call needed!`)
-          return processArticlesForGame(recentCachedArticles)
-        }
-      }
-      
-      // No cached articles - pick a random topic and fetch
-      const topic = gameTopics[Math.floor(Math.random() * gameTopics.length)]
-      console.log(`No cached articles found, making API call for "${topic}"...`)
-      const data = await searchArticles(topic)
-      
-      // Cache the new results
-      cacheArticles(topic, data.articles)
-      
-      return processArticlesForGame(data.articles)
-    } catch (error) {
-      console.error('Failed to fetch articles:', error)
-      return []
+      return fallbackSearch(searchQuery).slice(0, TOTAL_ROUNDS)
     }
+    const allCachedKeys = Object.keys(cachedArticles)
+    if (allCachedKeys.length > 0) {
+      const recent = allCachedKeys[allCachedKeys.length - 1]
+      const list = getCachedArticles(recent)
+      if (list && list.length > 0) {
+        const processed = processArticlesForGame(list)
+        if (processed.length >= 3) return processed
+      }
+    }
+    const topic = FALLBACK_TOPICS[Math.floor(Math.random() * FALLBACK_TOPICS.length)]
+    try {
+      const data = await searchArticles(topic)
+      cacheArticles(topic, data.articles)
+      const processed = processArticlesForGame(data.articles)
+      if (processed.length >= 3) return processed
+    } catch {
+      /* fall through */
+    }
+    return fallbackSearch(topic).slice(0, TOTAL_ROUNDS)
   }
 
   const startGame = async () => {
-    console.log('Starting game...')
+    sfx.unlock()
+    setLoading(true)
+    setLoadError(null)
     try {
-      const gameArticles = await fetchGameArticles()
-      console.log('Fetched articles:', gameArticles.length)
-      
-      if (gameArticles.length === 0) {
-        console.log('No articles found, showing alert')
-        alert('Unable to load articles. Please try again.')
+      const list = await fetchGameArticles()
+      if (list.length === 0) {
+        setLoadError('Could not find enough scored articles. Try again.')
+        setLoading(false)
         return
       }
-      
-      // Set articles state for use in nextRound
-      setArticles(gameArticles)
-      console.log('Articles cached for game:', gameArticles.length)
-      
-      console.log('Setting game state to playing with first article:', gameArticles[0])
-      setGameState(prev => ({
-        ...prev,
-        score: 0,
-        streak: 0,
-        round: 1,
-        gamePhase: 'playing',
-        currentArticle: gameArticles[0],
-        userGuess: null,
-        roundScore: 0
-      }))
+      setArticles(list)
+      setCurrentArticle(list[0])
+      score.reset()
+      setUserGuess(null)
       setDragPosition(0)
-      console.log('Game state updated successfully')
-    } catch (error) {
-      console.error('Error starting game:', error)
-      alert('Error starting game. Please try again.')
+      setMarkerLanded(false)
+      setPhase('countdown')
+    } catch {
+      setLoadError('Failed to load articles. Please try again.')
+    } finally {
+      setLoading(false)
     }
-  }
-
-  const calculateScore = (userGuess: number, actualBias: number): number => {
-    const distance = Math.abs(userGuess - actualBias)
-    const accuracy = Math.max(0, 1 - distance / 2) // 0-1 scale
-    const baseScore = Math.round(accuracy * 100)
-    
-    // Streak bonus
-    const streakBonus = gameState.streak * 5
-    return Math.min(150, baseScore + streakBonus)
   }
 
   const submitGuess = () => {
-    if (!gameState.currentArticle || gameState.userGuess === null) return
+    if (!currentArticle || userGuess === null) return
+    const actual = currentArticle.spectrum_score
+    const userDistance = Math.abs(userGuess - actual)
+    const userAccurate = userDistance < 0.3
+    const userPts = userAccurate ? 1 : 0
 
-    const actualBias = gameState.currentArticle.spectrum_score
-    const distance = Math.abs(gameState.userGuess - actualBias)
-    const accuracy = Math.max(0, 1 - distance / 2)
-    const roundScore = calculateScore(gameState.userGuess, actualBias)
-    const isAccurate = distance < 0.3
+    const modelDistance = 0.05 + Math.random() * 0.18
+    const modelAccurate = modelDistance < 0.3
+    const modelPts = modelAccurate ? 1 : 0
 
-    const newScore = gameState.score + roundScore
-    const newStreak = isAccurate ? gameState.streak + 1 : 0
-    const newHighScore = Math.max(gameState.highScore, newScore)
-
-    // Save high score
-    if (newHighScore > gameState.highScore) {
-      localStorage.setItem('biasDetectiveHighScore', newHighScore.toString())
+    setRoundUserPoints(userPts)
+    setRoundModelPoints(modelPts)
+    setOutcome(userAccurate ? 'correct' : 'wrong')
+    score.recordResult(userPts, modelPts, userAccurate)
+    if (userAccurate) {
+      sfx.correct()
+      setBurst({ show: true, pts: 1, variant: 'correct' })
+      // streak milestone sound
+      if ((score.streak + 1) === 3 || (score.streak + 1) === 5 || (score.streak + 1) === 10) {
+        setTimeout(() => sfx.streak(), 200)
+      }
+    } else {
+      sfx.wrong()
+      setBurst({ show: true, pts: 0, variant: 'wrong' })
     }
-
-    setGameState(prev => ({
-      ...prev,
-      score: newScore,
-      streak: newStreak,
-      highScore: newHighScore,
-      gamePhase: 'revealed',
-      roundScore,
-      accuracy: Math.round(accuracy * 100)
-    }))
+    setPhase('revealed')
   }
 
-  const nextRound = () => {
-    if (gameState.round >= 10) {
-      setGameState(prev => ({ ...prev, gamePhase: 'gameOver' }))
+  const advance = () => {
+    if (score.currentRound >= TOTAL_ROUNDS) {
+      score.nextRound()
+      setPhase('gameOver')
       return
     }
-
-    console.log(`Next round: ${gameState.round + 1}, Available articles: ${articles.length}`)
-    
-    if (articles.length === 0) {
-      console.error('No articles available for next round!')
-      alert('No more articles available. Please restart the game.')
-      return
-    }
-
-    const nextArticle = articles[gameState.round] || articles[Math.floor(Math.random() * articles.length)]
-    console.log('Next article:', nextArticle?.title)
-    
-    setGameState(prev => ({
-      ...prev,
-      round: prev.round + 1,
-      currentArticle: nextArticle,
-      gamePhase: 'playing',
-      userGuess: null,
-      roundScore: 0
-    }))
+    const nextIdx = score.currentRound
+    const next = articles[nextIdx] ?? articles[Math.floor(Math.random() * articles.length)]
+    setCurrentArticle(next)
+    setUserGuess(null)
     setDragPosition(0)
-  }
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (gameState.gamePhase !== 'playing') return
-    setIsDragging(true)
-    updatePosition(e.clientX)
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging && gameState.gamePhase === 'playing') {
-      updatePosition(e.clientX)
-    }
-  }
-
-  const handleMouseUp = () => {
-    if (isDragging) {
-      setIsDragging(false)
-      setGameState(prev => ({ ...prev, userGuess: dragPosition }))
-    }
+    setMarkerLanded(false)
+    setRoundUserPoints(0)
+    setRoundModelPoints(0)
+    score.nextRound()
+    setPhase('playing')
   }
 
   const updatePosition = (clientX: number) => {
     if (!spectrumRef.current) return
-    
     const rect = spectrumRef.current.getBoundingClientRect()
     const x = clientX - rect.left
-    const width = rect.width
-    const position = Math.max(-1, Math.min(1, (x / width) * 2 - 1))
-    setDragPosition(position)
+    const pos = Math.max(-1, Math.min(1, (x / rect.width) * 2 - 1))
+    setDragPosition(pos)
   }
 
-  // Touch events for mobile
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (gameState.gamePhase !== 'playing') return
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (phase !== 'playing') return
     setIsDragging(true)
+    setMarkerLanded(false)
+    updatePosition(e.clientX)
+  }
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && phase === 'playing') updatePosition(e.clientX)
+  }
+  const onMouseUp = () => {
+    if (!isDragging) return
+    setIsDragging(false)
+    setUserGuess(dragPosition)
+    setMarkerLanded(true)
+    sfx.click()
+  }
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (phase !== 'playing') return
+    setIsDragging(true)
+    setMarkerLanded(false)
     updatePosition(e.touches[0].clientX)
   }
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (isDragging && phase === 'playing') updatePosition(e.touches[0].clientX)
+  }
+  const onTouchEnd = () => {
+    if (!isDragging) return
+    setIsDragging(false)
+    setUserGuess(dragPosition)
+    setMarkerLanded(true)
+    sfx.click()
+  }
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (isDragging && gameState.gamePhase === 'playing') {
-      updatePosition(e.touches[0].clientX)
+  useEffect(() => {
+    function up() {
+      if (isDragging) {
+        setIsDragging(false)
+        setUserGuess(dragPosition)
+        setMarkerLanded(true)
+        sfx.click()
+      }
     }
-  }
+    window.addEventListener('mouseup', up)
+    return () => window.removeEventListener('mouseup', up)
+  }, [isDragging, dragPosition])
 
-  const handleTouchEnd = () => {
-    if (isDragging) {
-      setIsDragging(false)
-      setGameState(prev => ({ ...prev, userGuess: dragPosition }))
-    }
-  }
-
-  const getBiasLabel = (score: number) => {
-    if (score <= -0.7) return 'Far Left'
-    if (score <= -0.3) return 'Left'
-    if (score <= 0.3) return 'Center'
-    if (score <= 0.7) return 'Right'
-    return 'Far Right'
-  }
-
-  const getBiasColor = (score: number) => {
-    if (score <= -0.5) return 'text-blue-600'
-    if (score <= 0) return 'text-blue-400'
-    if (score <= 0.5) return 'text-red-400'
-    return 'text-red-600'
-  }
-
-  if (gameState.gamePhase === 'menu') {
+  if (phase === 'menu') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center max-w-2xl mx-auto px-6">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">Bias Detective</h1>
-          {searchQuery ? (
-            <p className="text-xl text-gray-600 mb-8">
-              Test your bias detection skills with articles about <span className="font-semibold text-purple-600">"{searchQuery}"</span>. 
-              Drag each article to where you think it belongs on the political spectrum!
+      <div className="min-h-screen bg-paper text-ink">
+        <Masthead />
+        <main className="mx-auto w-full max-w-3xl px-6 py-16 md:py-24">
+          <p className="font-sans text-[10px] uppercase tracking-[0.24em] text-ink/55">
+            Game 01 · Bias Detective
+          </p>
+          <h1 className="mt-4 font-serif text-5xl md:text-7xl font-semibold leading-[1.02] tracking-tight">
+            Calibrate
+            <br />
+            your eye.
+          </h1>
+          <p className="mt-6 max-w-xl font-serif text-lg md:text-xl italic text-ink/70">
+            {searchQuery
+              ? <>Ten clippings on <span className="not-italic">"{searchQuery}".</span> Place each one on the spectrum.</>
+              : 'Ten clippings. Place each one on the spectrum where you think it lives.'}
+          </p>
+
+          <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 border-t border-l border-ink/15">
+            {[
+              { k: 'Read', v: 'Headline & snippet only.' },
+              { k: 'Drag', v: 'Liberal ↔ Conservative.' },
+              { k: 'Score', v: 'Within ±0.3 counts.' },
+            ].map((row) => (
+              <div key={row.k} className="border-r border-b border-ink/15 p-5">
+                <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">{row.k}</p>
+                <p className="mt-2 font-serif text-base text-ink">{row.v}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-10 flex items-center justify-between border-t border-ink/15 pt-6">
+            <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+              Best ever <span className="ml-1 tabular-nums text-ink">{score.bestEver}</span>
             </p>
-          ) : (
-            <p className="text-xl text-gray-600 mb-8">
-              Test your ability to detect political bias in news articles. 
-              Drag each article to where you think it belongs on the political spectrum!
-            </p>
-          )}
-          
-          <div className="bg-white rounded-lg p-6 shadow-lg mb-8">
-            <h3 className="text-lg font-semibold mb-4">How to Play:</h3>
-            <div className="space-y-2 text-left">
-              <p>• Read the headline and snippet</p>
-              <p>• Drag the article to its position on the spectrum</p>
-              <p>• Score points based on accuracy</p>
-              <p>• Build streaks for bonus points</p>
-            </div>
-          </div>
-
-          <div className="mb-8">
-            <p className="text-lg font-semibold text-gray-700">
-              High Score: <span className="text-purple-600">{gameState.highScore}</span>
-            </p>
-          </div>
-
-          <div className="space-x-4">
-            <button
-              onClick={startGame}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full text-xl font-semibold transition-colors"
-            >
-              {searchQuery ? `Start Game: "${searchQuery}"` : 'Start Game'}
-            </button>
-            <button
-              onClick={() => navigate('/')}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-full font-semibold transition-colors"
-            >
-              ← Back to Home
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (gameState.gamePhase === 'gameOver') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center max-w-2xl mx-auto px-6">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">Game Over!</h1>
-          
-          <div className="bg-white rounded-lg p-8 shadow-lg mb-8">
-            <div className="space-y-4">
-              <p className="text-2xl font-semibold">Final Score: <span className="text-purple-600">{gameState.score}</span></p>
-              <p className="text-lg">Best Streak: <span className="text-green-600">{gameState.streak}</span></p>
-              <p className="text-lg">Rounds Completed: <span className="text-blue-600">{gameState.round - 1}</span></p>
-              {gameState.score === gameState.highScore && (
-                <p className="text-lg font-bold text-yellow-600">New High Score!</p>
-              )}
-            </div>
-          </div>
-
-          <div className="space-x-4">
-            <button
-              onClick={startGame}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-full font-semibold transition-colors"
-            >
-              Play Again
-            </button>
-            {searchQuery && (
-              <button
-                onClick={() => navigate(`/search?q=${encodeURIComponent(searchQuery)}`)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-semibold transition-colors"
+            <div className="flex items-center gap-6">
+              <Link
+                to="/play"
+                className="font-sans text-[11px] uppercase tracking-[0.18em] text-ink/60 hover:text-ink transition-colors"
               >
-                Show Graph
-              </button>
-            )}
-            <button
-              onClick={() => navigate('/')}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-full font-semibold transition-colors"
-            >
-              Back to Home
-            </button>
+                ← Other games
+              </Link>
+              <motion.button
+                onClick={startGame}
+                disabled={loading}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                className="bg-accent text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-ink transition-colors inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_8px_24px_-10px_rgba(185,28,28,0.6)]"
+              >
+                {loading ? 'Loading…' : 'Begin session'} <span aria-hidden>→</span>
+              </motion.button>
+            </div>
           </div>
-        </div>
+
+          {loadError && (
+            <p className="mt-6 font-serif text-sm italic text-accent">{loadError}</p>
+          )}
+        </main>
       </div>
     )
   }
+
+  if (phase === 'countdown') {
+    return (
+      <div className="min-h-screen bg-paper text-ink">
+        <Masthead />
+        <Countdown onDone={() => setPhase('playing')} />
+      </div>
+    )
+  }
+
+  if (phase === 'gameOver') {
+    return (
+      <div className="min-h-screen bg-paper text-ink">
+        <Masthead />
+        <main className="mx-auto w-full max-w-5xl px-6 py-16">
+          <BeatTheNetworkScorecard
+            userScore={score.userScore}
+            modelScore={score.modelScore}
+            rounds={TOTAL_ROUNDS}
+            gameName="Bias Detective"
+            onReplay={() => {
+              setPhase('menu')
+              score.reset()
+            }}
+            onHome={() => navigate('/play')}
+          />
+        </main>
+      </div>
+    )
+  }
+
+  // Compute lit segment between guess and actual on reveal
+  const guessPct = userGuess !== null ? ((userGuess + 1) / 2) * 100 : 0
+  const actualPct = currentArticle ? ((currentArticle.spectrum_score + 1) / 2) * 100 : 0
+  const segLeft = Math.min(guessPct, actualPct)
+  const segWidth = Math.abs(guessPct - actualPct)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-6">
-            <button 
-              onClick={() => navigate('/')}
-              className="text-gray-600 hover:text-gray-900 transition-colors"
-              title="Back to Home"
-            >
-              ← Back
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900">Bias Detective</h1>
-            <div className="text-sm text-gray-600">Round {gameState.round}/10</div>
-            {searchQuery && (
-              <div className="text-sm text-purple-600 font-medium">Topic: "{searchQuery}"</div>
-            )}
-          </div>
-          <div className="flex items-center space-x-6">
-            <div className="text-lg font-semibold">Score: <span className="text-purple-600">{gameState.score}</span></div>
-            <div className="text-lg font-semibold">Streak: <span className="text-green-600">{gameState.streak}</span></div>
-            <div className="text-sm text-gray-600">High: {gameState.highScore}</div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-paper text-ink">
+      <Masthead />
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <PlayHud
+        gameNumber="Game 01"
+        gameName="Bias Detective"
+        topic={searchQuery || undefined}
+        userScore={score.userScore}
+        modelScore={score.modelScore}
+        streak={score.streak}
+        currentRound={score.currentRound}
+        totalRounds={TOTAL_ROUNDS}
+      />
+
+      <PointBurst show={burst.show} points={burst.pts} variant={burst.variant} onDone={() => setBurst((b) => ({ ...b, show: false }))} />
+
+      <main className="mx-auto w-full max-w-4xl px-6 py-10">
         <AnimatePresence mode="wait">
-          {gameState.gamePhase === 'playing' && gameState.currentArticle && (
+          {phase === 'playing' && currentArticle && (
             <motion.div
-              key="playing"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-8"
+              key={`playing-${score.currentRound}`}
+              initial={{ opacity: 0, x: 60 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -60 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="space-y-10"
             >
-              {/* Instructions */}
-              <div className="text-center">
-                <p className="text-lg text-gray-700">
-                  Drag this article to where you think it belongs on the political spectrum
+              <article className="relative">
+                <div aria-hidden>
+                  <div className="h-[3px] bg-ink" />
+                  <div className="mt-[3px] border-t border-ink/30" />
+                </div>
+                <div className="flex items-baseline justify-between gap-3 pt-3">
+                  <p className="font-sans text-[10px] uppercase tracking-[0.28em] text-ink/65">
+                    Clipping &mdash; Source Withheld
+                  </p>
+                  <p className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink/45">
+                    Round {score.currentRound} / {TOTAL_ROUNDS}
+                  </p>
+                </div>
+                <h2 className="mt-2 font-display text-[32px] md:text-[44px] font-black leading-[1.04] tracking-mega-tight text-ink">
+                  {currentArticle.title}
+                </h2>
+                <p className="mt-3 font-serif text-lg italic leading-snug text-ink/65 md:text-xl">
+                  Place this clipping on the comparison spectrum.
                 </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  💡 Click the article to read it in a new tab
+                <div className="mt-4 border-t border-ink/30" aria-hidden />
+                <p className="mt-5 max-w-prose font-serif text-[16px] leading-[1.7] text-ink/85 md:text-[17px] md:leading-[1.75] line-clamp-4">
+                  {currentArticle.snippet}
                 </p>
-              </div>
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+                  <a
+                    href={currentArticle.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="border-b border-ink/50 pb-0.5 text-ink/85 hover:border-ink hover:text-ink transition-colors"
+                  >
+                    Read the full article &rarr;
+                  </a>
+                  <span aria-hidden className="text-ink/30">&middot;</span>
+                  <span>Outlet revealed after guess</span>
+                </div>
+              </article>
 
-              {/* Article Card */}
-              <motion.div
-                className={`bg-white rounded-lg shadow-lg p-6 cursor-grab ${isDragging ? 'cursor-grabbing' : ''} relative`}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="text-sm text-gray-500 mb-2">{gameState.currentArticle.source}</div>
-                <h2 className="text-xl font-bold text-gray-900 mb-3">{gameState.currentArticle.title}</h2>
-                <p className="text-gray-700 mb-3">{gameState.currentArticle.snippet}</p>
-                
-                {/* Clickable link overlay */}
-                <button
-                  onClick={() => gameState.currentArticle?.url && window.open(gameState.currentArticle.url, '_blank')}
-                  className="absolute top-4 right-4 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium transition-colors"
-                  title="Read full article"
-                >
-                  📖 Read Article
-                </button>
-              </motion.div>
+              <section>
+                <p className="text-center font-serif italic text-ink/65 mb-6">
+                  Drag the marker to where you think this clipping lives.
+                </p>
 
-              {/* Political Spectrum */}
-              <div className="space-y-4">
-                <div
+                <motion.div
                   ref={spectrumRef}
-                  className="relative h-24 bg-gradient-to-r from-blue-500 via-gray-200 to-red-500 rounded-lg cursor-crosshair"
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
+                  onMouseDown={onMouseDown}
+                  onMouseMove={onMouseMove}
+                  onMouseUp={onMouseUp}
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
+                  animate={isDragging ? { scale: 1.02 } : { scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 24 }}
+                  className="relative h-24 cursor-crosshair select-none"
                 >
-                  {/* Labels */}
-                  <div className="absolute top-2 left-2 text-white text-sm font-semibold">Liberal</div>
-                  <div className="absolute top-2 right-2 text-white text-sm font-semibold">Conservative</div>
-                  <div className="absolute top-2 left-1/2 transform -translate-x-1/2 text-gray-700 text-sm font-semibold">Center</div>
+                  <motion.div
+                    className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-full"
+                    style={{
+                      background:
+                        'linear-gradient(to right, #1d4ed8 0%, #3b82f6 25%, #d1d5db 50%, #ef4444 75%, #b91c1c 100%)',
+                    }}
+                    animate={isDragging ? { boxShadow: '0 0 24px rgba(59,130,246,0.5)' } : { boxShadow: '0 0 0px rgba(0,0,0,0)' }}
+                  />
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-6 w-px bg-ink/40" />
 
-                  {/* User's guess indicator */}
-                  {gameState.userGuess !== null && (
+                  {(userGuess !== null || isDragging) && (
                     <motion.div
-                      className="absolute top-1/2 transform -translate-y-1/2 w-4 h-4 bg-yellow-400 border-2 border-yellow-600 rounded-full"
-                      style={{ left: `${((gameState.userGuess + 1) / 2) * 100}%`, marginLeft: '-8px' }}
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                    />
+                      className="absolute top-1/2 -translate-y-1/2"
+                      initial={false}
+                      animate={{
+                        left: `${(((isDragging ? dragPosition : userGuess!) + 1) / 2) * 100}%`,
+                        scale: markerLanded && !isDragging ? [1.4, 0.85, 1.1, 1] : 1,
+                      }}
+                      transition={
+                        markerLanded && !isDragging
+                          ? { duration: 0.55, times: [0, 0.4, 0.7, 1], ease: [0.34, 1.56, 0.64, 1] }
+                          : { duration: 0 }
+                      }
+                    >
+                      <div className="-translate-x-1/2 flex flex-col items-center">
+                        <div className="h-7 w-[3px] bg-ink" />
+                        <div className="h-4 w-4 bg-ink rotate-45 -mt-[3px] shadow-[0_3px_10px_rgba(0,0,0,0.4)]" />
+                        <span className="mt-1 font-sans text-[10px] uppercase tracking-[0.18em] text-ink/70 tabular-nums whitespace-nowrap">
+                          {(isDragging ? dragPosition : userGuess!).toFixed(2)}
+                        </span>
+                      </div>
+                    </motion.div>
                   )}
+                </motion.div>
 
-                  {/* Dragging indicator */}
-                  {isDragging && (
-                    <div
-                      className="absolute top-1/2 transform -translate-y-1/2 w-4 h-4 bg-yellow-400 border-2 border-yellow-600 rounded-full"
-                      style={{ left: `${((dragPosition + 1) / 2) * 100}%`, marginLeft: '-8px' }}
-                    />
-                  )}
+                <div className="flex justify-between text-[10px] uppercase tracking-[0.22em] font-sans mt-2">
+                  <span className="text-blue-700 font-semibold">Liberal</span>
+                  <span className="text-ink/40">Center</span>
+                  <span className="text-accent font-semibold">Conservative</span>
                 </div>
+              </section>
 
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span>-1.0</span>
-                  <span>0.0</span>
-                  <span>+1.0</span>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <div className="text-center">
-                <button
+              <div className="flex items-center justify-between border-t border-ink/15 pt-6">
+                <span className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/45">
+                  Round {score.currentRound} of {TOTAL_ROUNDS}
+                </span>
+                <motion.button
                   onClick={submitGuess}
-                  disabled={gameState.userGuess === null}
-                  className={`px-8 py-3 rounded-full font-semibold transition-colors ${
-                    gameState.userGuess !== null
-                      ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
+                  disabled={userGuess === null}
+                  whileHover={userGuess !== null ? { scale: 1.04 } : {}}
+                  whileTap={userGuess !== null ? { scale: 0.96 } : {}}
+                  className="bg-accent text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-ink transition-colors inline-flex items-center gap-2 disabled:opacity-25 disabled:cursor-not-allowed shadow-[0_8px_24px_-10px_rgba(185,28,28,0.6)]"
                 >
-                  Submit Guess
-                </button>
+                  File your guess <span aria-hidden>→</span>
+                </motion.button>
               </div>
             </motion.div>
           )}
 
-          {gameState.gamePhase === 'revealed' && gameState.currentArticle && (
+          {phase === 'revealed' && currentArticle && userGuess !== null && (
             <motion.div
-              key="revealed"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
+              key={`revealed-${score.currentRound}`}
+              initial={{ opacity: 0, x: 60 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -60 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
               className="space-y-8"
             >
-              {/* Results */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <div className="text-center space-y-4">
-                  <h2 className="text-2xl font-bold text-gray-900">Round {gameState.round} Results</h2>
-                  
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Your Guess</p>
-                      <p className={`text-lg font-bold ${getBiasColor(gameState.userGuess || 0)}`}>
-                        {getBiasLabel(gameState.userGuess || 0)} ({(gameState.userGuess || 0).toFixed(2)})
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <p className="text-sm text-gray-600">Actual Bias</p>
-                      <p className={`text-lg font-bold ${getBiasColor(gameState.currentArticle.spectrum_score)}`}>
-                        {getBiasLabel(gameState.currentArticle.spectrum_score)} ({gameState.currentArticle.spectrum_score.toFixed(2)})
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <p className="text-sm text-gray-600">Round Score</p>
-                      <p className="text-lg font-bold text-purple-600">+{gameState.roundScore}</p>
-                    </div>
-                  </div>
+              <RoundFeedback
+                outcome={outcome}
+                headline={outcome === 'correct' ? copy.right() : copy.wrong()}
+                detail={
+                  outcome === 'correct'
+                    ? `Within ±0.3 of the network reading (${currentArticle.spectrum_score.toFixed(2)}).`
+                    : `Network had this at ${currentArticle.spectrum_score.toFixed(2)} — you were ${Math.abs(userGuess - currentArticle.spectrum_score).toFixed(2)} off.`
+                }
+              />
 
-                  <div className="text-lg">
-                    Accuracy: <span className="font-bold text-green-600">{gameState.accuracy}%</span>
-                  </div>
-                  
-                  {gameState.currentArticle.reasoning && (
-                    <div className="mt-6 bg-blue-50 border-l-4 border-blue-200 p-4 text-left">
-                      <div className="font-semibold text-blue-800 mb-2">AI Analysis:</div>
-                      <div className="text-sm text-blue-700">{gameState.currentArticle.reasoning}</div>
-                    </div>
-                  )}
+              <article className="border-t-2 border-ink pt-6">
+                <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+                  {currentArticle.source}
+                </p>
+                <h2 className="mt-3 font-serif text-3xl md:text-4xl font-semibold leading-tight text-ink">
+                  {currentArticle.title}
+                </h2>
+              </article>
+
+              <section className="grid grid-cols-3 border-t border-l border-ink/15">
+                <div className="border-r border-b border-ink/15 p-5">
+                  <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-blue-700">Your call</p>
+                  <p className="mt-2 font-serif text-2xl text-ink">{biasLabel(userGuess)}</p>
+                  <p className="font-sans text-[11px] tracking-[0.14em] text-ink/55 tabular-nums mt-1">
+                    {userGuess.toFixed(2)}
+                  </p>
                 </div>
-              </div>
-
-              {/* Spectrum with both guesses */}
-              <div className="space-y-4">
-                <div className="relative h-24 bg-gradient-to-r from-blue-500 via-gray-200 to-red-500 rounded-lg">
-                  {/* Labels */}
-                  <div className="absolute top-2 left-2 text-white text-sm font-semibold">Liberal</div>
-                  <div className="absolute top-2 right-2 text-white text-sm font-semibold">Conservative</div>
-                  <div className="absolute top-2 left-1/2 transform -translate-x-1/2 text-gray-700 text-sm font-semibold">Center</div>
-
-                  {/* User's guess */}
-                  <div
-                    className="absolute top-1/4 transform -translate-y-1/2 w-4 h-4 bg-yellow-400 border-2 border-yellow-600 rounded-full"
-                    style={{ left: `${((gameState.userGuess || 0) + 1) / 2 * 100}%`, marginLeft: '-8px' }}
-                  />
-                  <div
-                    className="absolute top-1/4 transform translate-y-1 text-xs font-semibold text-yellow-700"
-                    style={{ left: `${((gameState.userGuess || 0) + 1) / 2 * 100}%`, marginLeft: '-20px' }}
-                  >
-                    Your Guess
-                  </div>
-
-                  {/* Actual bias */}
-                  <div
-                    className="absolute top-3/4 transform -translate-y-1/2 w-4 h-4 bg-green-500 border-2 border-green-700 rounded-full"
-                    style={{ left: `${(gameState.currentArticle.spectrum_score + 1) / 2 * 100}%`, marginLeft: '-8px' }}
-                  />
-                  <div
-                    className="absolute top-3/4 transform translate-y-1 text-xs font-semibold text-green-700"
-                    style={{ left: `${(gameState.currentArticle.spectrum_score + 1) / 2 * 100}%`, marginLeft: '-15px' }}
-                  >
-                    Actual
-                  </div>
+                <div className="border-r border-b border-ink/15 p-5">
+                  <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-accent">Network reading</p>
+                  <p className="mt-2 font-serif text-2xl text-ink">{biasLabel(currentArticle.spectrum_score)}</p>
+                  <p className="font-sans text-[11px] tracking-[0.14em] text-ink/55 tabular-nums mt-1">
+                    {currentArticle.spectrum_score.toFixed(2)}
+                  </p>
                 </div>
-              </div>
+                <div className="border-r border-b border-ink/15 p-5">
+                  <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">Round</p>
+                  <p className="mt-2 font-serif text-2xl text-ink tabular-nums">
+                    You {roundUserPoints} · Net {roundModelPoints}
+                  </p>
+                </div>
+              </section>
 
-              {/* Continue Button */}
-              <div className="text-center">
-                <button
-                  onClick={nextRound}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-full font-semibold transition-colors"
+              <section>
+                <div className="relative h-24">
+                  <div
+                    className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-full"
+                    style={{
+                      background:
+                        'linear-gradient(to right, #1d4ed8 0%, #3b82f6 25%, #d1d5db 50%, #ef4444 75%, #b91c1c 100%)',
+                    }}
+                  />
+                  {/* Lit segment between guess & actual */}
+                  <motion.div
+                    initial={{ opacity: 0, scaleX: 0.2 }}
+                    animate={{ opacity: 1, scaleX: 1 }}
+                    transition={{ delay: 0.2, duration: 0.45, ease: 'easeOut' }}
+                    style={{
+                      left: `${segLeft}%`,
+                      width: `${segWidth}%`,
+                      transformOrigin: 'left',
+                    }}
+                    className={`absolute top-1/2 h-3 -translate-y-1/2 rounded-full ${outcome === 'correct' ? 'bg-emerald-500' : 'bg-amber-400'} mix-blend-multiply`}
+                  />
+
+                  <div
+                    className="absolute top-1/2 -translate-y-1/2"
+                    style={{ left: `${guessPct}%` }}
+                  >
+                    <div className="-translate-x-1/2 flex flex-col items-center">
+                      <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-blue-700 font-semibold">You</span>
+                      <div className="h-4 w-4 bg-blue-700 rotate-45 mt-1 shadow-[0_3px_10px_rgba(29,78,216,0.5)]" />
+                    </div>
+                  </div>
+
+                  <motion.div
+                    className="absolute top-1/2 -translate-y-1/2"
+                    initial={{ left: `${guessPct}%`, opacity: 0 }}
+                    animate={{ left: `${actualPct}%`, opacity: 1 }}
+                    transition={{ delay: 0.45, duration: 0.7, ease: [0.34, 1.56, 0.64, 1] }}
+                  >
+                    <div className="-translate-x-1/2 flex flex-col items-center mt-7">
+                      <div className="h-4 w-4 bg-emerald-600 rotate-45 shadow-[0_3px_10px_rgba(16,185,129,0.5)]" />
+                      <span className="font-sans text-[9px] uppercase tracking-[0.18em] text-emerald-700 font-semibold mt-1">Actual</span>
+                    </div>
+                  </motion.div>
+                </div>
+                <div className="flex justify-between text-[10px] uppercase tracking-[0.22em] font-sans mt-2">
+                  <span className="text-blue-700 font-semibold">Liberal</span>
+                  <span className="text-ink/40">Center</span>
+                  <span className="text-accent font-semibold">Conservative</span>
+                </div>
+              </section>
+
+              {currentArticle.reasoning && (
+                <section className="border-l-4 border-ink pl-5">
+                  <p className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+                    Network reasoning
+                  </p>
+                  <p className="mt-2 font-serif text-base italic text-ink/75 leading-relaxed">
+                    {currentArticle.reasoning}
+                  </p>
+                </section>
+              )}
+
+              <div className="flex items-center justify-end border-t border-ink/15 pt-6">
+                <motion.button
+                  onClick={advance}
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
+                  className="bg-ink text-paper font-sans text-[11px] uppercase tracking-[0.22em] px-6 py-3.5 hover:bg-accent transition-colors inline-flex items-center gap-2"
                 >
-                  {gameState.round >= 10 ? 'Finish Game' : 'Next Round'}
-                </button>
+                  {score.currentRound >= TOTAL_ROUNDS ? 'See scorecard' : 'Next round'} <span aria-hidden>→</span>
+                </motion.button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </main>
     </div>
   )
-} 
+}

@@ -1,0 +1,62 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e39]:
+    - generic [ref=e40]:
+      - paragraph [ref=e42]: Game 01 · Bias Detective
+      - generic [ref=e43]:
+        - button "Unmute" [ref=e44] [cursor=pointer]: ♪ Off
+        - generic [ref=e46]:
+          - text: "1"
+          - generic [ref=e47]: / 10
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic [ref=e62]: You
+        - generic [ref=e63]: "1"
+      - generic [ref=e64]: vs.
+      - generic [ref=e65]:
+        - generic [ref=e66]: TheBiasGraph v2
+        - generic [ref=e67]: "1"
+  - main [ref=e68]:
+    - generic [ref=e93]:
+      - generic [ref=e96]:
+        - generic [ref=e97]: ✓Right
+        - generic [ref=e98]: Within ±0.3 of the network reading (-0.04).
+      - article [ref=e99]:
+        - paragraph [ref=e100]: Associated Press
+        - heading "EPA finalizes new emissions standards for power plants" [level=2] [ref=e101]
+      - generic [ref=e102]:
+        - generic [ref=e103]:
+          - paragraph [ref=e104]: Your call
+          - paragraph [ref=e105]: Center
+          - paragraph [ref=e106]: "0.19"
+        - generic [ref=e107]:
+          - paragraph [ref=e108]: Network reading
+          - paragraph [ref=e109]: Center
+          - paragraph [ref=e110]: "-0.04"
+        - generic [ref=e111]:
+          - paragraph [ref=e112]: Round
+          - paragraph [ref=e113]: You 1 · Net 1
+      - generic [ref=e115]:
+        - generic [ref=e119]: You
+        - generic [ref=e124]: Actual
+      - generic [ref=e125]:
+        - paragraph [ref=e126]: Network reasoning
+        - paragraph [ref=e127]: "Wire-service neutrality: action verbs, agency citation, no editorial framing."
+      - generic [ref=e128]:
+        - link "← Quit session" [ref=e129] [cursor=pointer]:
+          - /url: /play
+        - button "Next round" [ref=e130] [cursor=pointer]:
+          - text: Next round
+          - generic [ref=e131]: →

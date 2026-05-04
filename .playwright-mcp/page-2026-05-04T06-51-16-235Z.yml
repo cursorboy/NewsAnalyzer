@@ -1,0 +1,57 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e43]:
+    - link "← Quit" [ref=e44] [cursor=pointer]:
+      - /url: /play
+    - generic [ref=e46]:
+      - generic [ref=e47]: Game 02
+      - generic [ref=e48]: Guess the Source
+    - generic [ref=e49]:
+      - generic [ref=e50]:
+        - generic [ref=e51]: You
+        - generic [ref=e53]: "0"
+      - generic [ref=e54]: —
+      - generic [ref=e55]:
+        - generic [ref=e57]: "0"
+        - generic [ref=e58]: Network
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - text: "1"
+        - generic [ref=e61]: / 10
+      - button "Mute sound" [ref=e73] [cursor=pointer]: Sound on
+  - main [ref=e74]:
+    - generic [ref=e75]:
+      - article [ref=e76]:
+        - paragraph [ref=e77]: Clipping · masthead removed
+        - heading "House passes spending bill on party-line vote" [level=2] [ref=e78]
+        - paragraph [ref=e79]: The House passed a $1.2 trillion spending package Thursday in a 218-210 vote that fell almost entirely along party lines, sending the measure to the Senate.
+      - generic [ref=e80]:
+        - paragraph [ref=e81]: Whose desk did this come from?
+        - generic [ref=e82]:
+          - button "The Guardian Pick →" [ref=e83] [cursor=pointer]:
+            - paragraph [ref=e84]: The Guardian
+            - paragraph [ref=e85]: Pick →
+          - button "NPR Pick →" [ref=e86] [cursor=pointer]:
+            - paragraph [ref=e87]: NPR
+            - paragraph [ref=e88]: Pick →
+          - button "Reuters Pick →" [ref=e89] [cursor=pointer]:
+            - paragraph [ref=e90]: Reuters
+            - paragraph [ref=e91]: Pick →
+          - button "Associated Press Pick →" [ref=e92] [cursor=pointer]:
+            - paragraph [ref=e93]: Associated Press
+            - paragraph [ref=e94]: Pick →
+      - generic [ref=e95]:
+        - generic [ref=e96]: Round 1 of 10
+        - generic [ref=e97]: Streak 0

@@ -91,6 +91,23 @@ export type BiasDimensions = {
   social: number
   establishment: number
   sensationalism: number
+  loaded_language?: number
+  source_diversity?: number
+  headline_body_skew?: number
+}
+
+export type LoadedPhrase = { text: string; offset: number; reason: string }
+
+export type SourceDiversityDetail = {
+  quoted_entities: string[]
+  anonymous_count: number
+  score: number
+}
+
+export type HeadlineBodySkewDetail = {
+  headline_tone: number
+  body_tone: number
+  delta: number
 }
 
 export type ArticleDetail = {
@@ -98,6 +115,9 @@ export type ArticleDetail = {
   article: Article
   bias_dimensions: BiasDimensions
   highlighted_phrases: { text: string; dimension: string }[]
+  loaded_phrases?: LoadedPhrase[]
+  source_diversity_detail?: SourceDiversityDetail
+  headline_body_skew_detail?: HeadlineBodySkewDetail
 }
 
 export type Narrative = {
@@ -123,5 +143,50 @@ export async function getArticleDetail(id: string): Promise<ArticleDetail> {
 export async function getNarratives(): Promise<Narrative[]> {
   const res = await fetch(new URL('/narratives', API_BASE))
   if (!res.ok) throw new Error('Failed to load narratives')
+  return res.json()
+}
+
+export type AnalyzeRequest = { url?: string; text?: string; title?: string }
+
+export async function analyzeArticle(req: AnalyzeRequest): Promise<ArticleDetail> {
+  const res = await fetch(new URL('/analyze', API_BASE), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  })
+  if (!res.ok) throw new Error('Failed to analyze article')
+  return res.json()
+}
+
+export type ComparePair = {
+  query: string
+  article_a: ArticleDetail
+  article_b: ArticleDetail
+}
+
+export async function getComparePair(query: string): Promise<ComparePair> {
+  const url = new URL('/games/compare-pair', API_BASE)
+  url.searchParams.set('q', query)
+  const res = await fetch(url.toString())
+  if (!res.ok) throw new Error('Failed to load compare pair')
+  return res.json()
+}
+
+export type HeadlineRewriteScore = {
+  total: number
+  breakdown: Record<string, number>
+  weights?: Record<string, number>
+}
+
+export async function scoreHeadlineRewrite(
+  original: string,
+  rewrite: string,
+): Promise<HeadlineRewriteScore> {
+  const res = await fetch(new URL('/games/headline-rewrite/score', API_BASE), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ original, rewrite }),
+  })
+  if (!res.ok) throw new Error('Failed to score rewrite')
   return res.json()
 }

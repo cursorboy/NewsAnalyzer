@@ -1,0 +1,16 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "NeuralBias" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - button "NeuralBias v2 · 10,000hr" [ref=e11] [cursor=pointer]:
+        - generic [ref=e15]: NeuralBias v2
+        - generic [ref=e16]: ·
+        - generic [ref=e17]: 10,000hr
+  - generic [ref=e19]:
+    - img "Neural network inference" [ref=e20]
+    - generic [ref=e107]:
+      - generic [ref=e108]: NeuralBias v2 inference
+      - generic [ref=e109]: Loading article

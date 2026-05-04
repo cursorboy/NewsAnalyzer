@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from dataclasses import dataclass
 from typing import Optional
+
 import tldextract
-import httpx
-import json
+
 from ..config import settings
+from .provider import get_provider
 
 # Comprehensive political news source classification
 OUTLET_BIAS: dict[str, float] = {
@@ -136,16 +139,14 @@ def extract_domain(url: str) -> Optional[str]:
         return None
 
 
-async def classify_with_ai(title: str, snippet: str, source: str) -> Classification:
-    """Use OpenAI to analyze article bias with detailed reasoning"""
-    print(f"Debug classify_with_ai: OpenAI key configured: {bool(settings.openai_api_key)}")
-    if not settings.openai_api_key:
-        print("Debug: No OpenAI API key, falling back to outlet classification")
-        # Fallback to outlet-based classification
-        return classify_by_outlet(f"https://{source}")
-    
-    try:
-        prompt = f"""
+SYSTEM_PROMPT = (
+    "You are an expert media analyst specializing in detecting political "
+    "bias in news articles. Provide objective, detailed analysis."
+)
+
+
+def _build_prompt(title: str, snippet: str, source: str) -> str:
+    return f"""
 Analyze this news article for political bias on a scale from -1.0 (far left) to +1.0 (far right), where 0.0 is perfectly neutral.
 
 Article Title: {title}
@@ -172,58 +173,38 @@ Respond in this exact JSON format:
 }}
 """
 
-        async with httpx.AsyncClient(timeout=15.0) as client:  # 15 second timeout
-            response = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.openai_api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "gpt-4o-mini",  # Cost-effective model
-                    "messages": [
-                        {
-                            "role": "system", 
-                            "content": "You are an expert media analyst specializing in detecting political bias in news articles. Provide objective, detailed analysis."
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    "temperature": 0.3,  # Lower temperature for more consistent analysis
-                    "max_tokens": 200  # Reduced tokens for faster response
-                }
-            )
-            
-            if response.status_code != 200:
-                print(f"Debug: OpenAI API error: {response.status_code} - {response.text}")
-                return classify_by_outlet(f"https://{source}")
-            
-            result = response.json()
-            content = result["choices"][0]["message"]["content"]
-            print(f"Debug: OpenAI API response received: {content[:100]}...")
-            
-            # Parse the JSON response
-            try:
-                analysis = json.loads(content)
-                print(f"Debug: Successfully parsed OpenAI response, returning AI classification")
-                return Classification(
-                    score=float(analysis["bias_score"]),
-                    confidence=float(analysis["confidence"]),
-                    method="ai",
-                    reasoning=analysis["reasoning"]
-                )
-            except (json.JSONDecodeError, KeyError, ValueError) as e:
-                print(f"Debug: Failed to parse OpenAI response: {e}")
-                print(f"Debug: Response content: {content}")
-                return classify_by_outlet(f"https://{source}")
-                
+
+def _classify_with_ai_sync(title: str, snippet: str, source: str) -> Classification:
+    try:
+        provider = get_provider()
+    except Exception as e:
+        print(f"Debug: provider unavailable, falling back to outlet: {e}")
+        return classify_by_outlet(f"https://{source}")
+
+    try:
+        content = provider.complete(
+            system=SYSTEM_PROMPT,
+            user=_build_prompt(title, snippet, source),
+            response_format={"type": "json_object"},
+        )
+        analysis = json.loads(content)
+        return Classification(
+            score=float(analysis["bias_score"]),
+            confidence=float(analysis["confidence"]),
+            method="ai",
+            reasoning=analysis.get("reasoning"),
+        )
     except Exception as e:
         print(f"Debug: AI classification failed: {e}")
-        import traceback
-        traceback.print_exc()
         return classify_by_outlet(f"https://{source}")
+
+
+async def classify_with_ai(title: str, snippet: str, source: str) -> Classification:
+    """Async wrapper around the sync provider call so existing async callers
+    in api/index.py keep working unchanged."""
+    if not settings.openai_api_key:
+        return classify_by_outlet(f"https://{source}")
+    return await asyncio.to_thread(_classify_with_ai_sync, title, snippet, source)
 
 
 def classify_by_outlet(url: str) -> Classification:

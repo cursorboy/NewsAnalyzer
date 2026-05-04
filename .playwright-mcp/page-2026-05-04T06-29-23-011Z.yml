@@ -1,0 +1,38 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - main [ref=e19]:
+    - paragraph [ref=e20]: Game 03 · Compare Two Takes
+    - heading "Same story. Two desks." [level=1] [ref=e21]:
+      - text: Same story.
+      - text: Two desks.
+    - paragraph [ref=e22]: Two articles per round on the same topic. Decide which is more biased — and which way it leans.
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - paragraph [ref=e25]: Read
+        - paragraph [ref=e26]: Two takes side by side.
+      - generic [ref=e27]:
+        - paragraph [ref=e28]: Pick
+        - paragraph [ref=e29]: "More biased: A, B, or Even."
+      - generic [ref=e30]:
+        - paragraph [ref=e31]: Score
+        - paragraph [ref=e32]: +1 magnitude · +1 direction.
+    - generic [ref=e33]:
+      - paragraph [ref=e34]: Best ever 0
+      - generic [ref=e35]:
+        - link "← Other games" [ref=e36] [cursor=pointer]:
+          - /url: /play
+        - button "Begin session" [ref=e37] [cursor=pointer]:
+          - text: Begin session
+          - generic [ref=e38]: →

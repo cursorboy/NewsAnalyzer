@@ -1,212 +1,248 @@
-import { BrowserRouter, Routes, Route, useNavigate, useSearchParams } from 'react-router-dom'
-import { useState } from 'react'
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Link,
+  useSearchParams,
+  useLocation,
+  type Location,
+} from 'react-router-dom'
+import { useEffect, useState, lazy, Suspense, type ReactElement } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import './index.css'
 import { useSearch } from './hooks/useSearch'
-import { searchArticles } from './lib/api'
 import { Spectrum } from './components/Spectrum'
 import { LoadingSpectrum } from './components/LoadingSpectrum'
 import Columns from './components/Columns'
 import Game from './components/Game'
 import APIStatusDashboard from './components/APIStatus'
-import Articles from './components/Articles'
 import ArticleDetail from './components/ArticleDetail'
-import Narratives from './components/Narratives'
+import Masthead from './components/Masthead'
 import { ArticlesProvider, useArticles } from './context/ArticlesContext'
-
-function Landing() {
-  const navigate = useNavigate()
-  const { cacheArticles } = useArticles()
-  const [q, setQ] = useState('')
-  const [searchResults, setSearchResults] = useState<any>(null)
-  const [isLoading, setIsLoading] = useState(false)
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!q.trim()) return
-    
-    setIsLoading(true)
-    try {
-      const data = await searchArticles(q.trim())
-      setSearchResults(data)
-      
-      // Cache the articles for potential game use
-      cacheArticles(q.trim(), data.articles)
-      
-      // Log API status for debugging
-      if (data.api_status) {
-        console.log('API Status:', data.api_status)
-        if (data.api_status.error) {
-          console.warn('API Issue:', data.api_status.message)
-        }
-      }
-    } catch (error) {
-      console.error('Search failed:', error)
-      setSearchResults({
-        query: q.trim(),
-        articles: [],
-        api_status: {
-          error: 'network_error',
-          message: 'Unable to connect to the search service. Please check if the backend is running.'
-        }
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const viewSpectrum = () => {
-    navigate(`/search?q=${encodeURIComponent(q.trim())}`)
-  }
-
-  const playGame = () => {
-    navigate(`/game?q=${encodeURIComponent(q.trim())}`)
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-200 via-purple-100 via-pink-100 to-orange-200 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-red-400/20 to-pink-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-cyan-300/10 to-yellow-300/10 rounded-full blur-3xl animate-pulse delay-500"></div>
-      </div>
-      <div className="relative z-10 mx-auto max-w-4xl px-6 pt-28 pb-16 text-center">
-        <span className="inline-flex items-center rounded-full border bg-white/70 backdrop-blur px-3 py-1 text-xs font-medium text-gray-700">Political Spectrum News Analyzer</span>
-        <h1 className="mt-6 text-4xl md:text-6xl font-extrabold tracking-tight text-gray-900 text-center">TheBiasGraph</h1>
-        <p className="mt-4 text-lg text-gray-600 text-center">Search any topic and choose how to explore the coverage across the political spectrum.</p>
-
-        <form onSubmit={handleSearch} className="mt-10">
-          <div className="mx-auto flex max-w-3xl items-center rounded-full border border-gray-300/70 bg-white/90 shadow-sm ring-1 ring-black/5 focus-within:ring-2 focus-within:ring-blue-400">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Enter any news event or topic, such as &quot;student loan forgiveness&quot;"
-              className="flex-1 rounded-full bg-transparent px-6 py-4 text-lg outline-none"
-            />
-            <button type="submit" disabled={isLoading} className="m-1 rounded-full bg-blue-600 px-6 py-2 text-white text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50">
-              {isLoading ? 'Searching...' : 'Search'}
-            </button>
-          </div>
-        </form>
-        
-        {searchResults && (
-          <div className="mt-12 bg-white rounded-lg shadow-lg p-8 text-center">
-            {/* API Status Warning */}
-            {searchResults.api_status?.error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-center justify-center text-red-800">
-                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                  <span className="font-semibold">
-                    {searchResults.api_status.error === 'rate_limited' ? 'Rate Limited' :
-                     searchResults.api_status.error === 'quota_exceeded' ? 'API Quota Exceeded' :
-                     searchResults.api_status.error === 'network_error' ? 'Connection Error' :
-                     'API Error'}
-                  </span>
-                </div>
-                <p className="text-red-700 text-sm mt-2">{searchResults.api_status.message}</p>
-                {searchResults.api_status.error === 'quota_exceeded' && (
-                  <p className="text-red-600 text-xs mt-2">
-                    Google Custom Search API daily quota reached. Please try again tomorrow or upgrade your API plan.
-                  </p>
-                )}
-              </div>
-            )}
-            
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Found {searchResults.articles.length} articles about "{searchResults.query}"
-            </h2>
-            
-            {/* API Status Info for successful requests */}
-            {searchResults.api_status && !searchResults.api_status.error && searchResults.api_status.requests_made && (
-              <div className="mb-4 text-xs text-gray-500">
-                API Status: {searchResults.api_status.requests_made} requests made • {searchResults.api_status.success_rate}% success rate
-              </div>
-            )}
-            
-            <p className="text-gray-600 mb-8">How would you like to explore this coverage?</p>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-gradient-to-r from-blue-500 to-red-500 p-6 rounded-lg text-white">
-                <h3 className="text-xl font-semibold mb-2">View Spectrum</h3>
-                <p className="text-blue-100 mb-4">See all articles positioned across the political spectrum</p>
-                <button 
-                  onClick={viewSpectrum}
-                  className="bg-white text-gray-900 px-6 py-2 rounded-full font-semibold hover:bg-gray-100 transition-colors"
-                >
-                  Explore Coverage
-                </button>
-              </div>
-              
-              <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-6 rounded-lg text-white">
-                <h3 className="text-xl font-semibold mb-2">Play Bias Detective</h3>
-                <p className="text-purple-100 mb-4">Test your bias detection skills with these articles</p>
-                <button 
-                  onClick={playGame}
-                  className="bg-white text-gray-900 px-6 py-2 rounded-full font-semibold hover:bg-gray-100 transition-colors"
-                >
-                  Start Game
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+import Landing from './pages/Landing'
+import Analyze from './pages/Analyze'
+import PlayHub from './pages/PlayHub'
+const InferenceLab = lazy(() => import('./pages/InferenceLab'))
+const HowIBuiltThis = lazy(() => import('./pages/HowIBuiltThis'))
+import GuessSource from './components/games/GuessSource'
+import CompareTakes from './components/games/CompareTakes'
+import HeadlineRewrite from './components/games/HeadlineRewrite'
 
 function Results() {
   const [params] = useSearchParams()
   const query = params.get('q') ?? ''
   const { cacheArticles, getCachedArticles } = useArticles()
   const [view, setView] = useState<'spectrum' | 'columns'>('spectrum')
-  
-  // Check if we have cached articles first
+  const [draft, setDraft] = useState(query)
+
+  useEffect(() => {
+    setDraft(query)
+  }, [query])
+
   const cachedArticles = getCachedArticles(query)
   const shouldUseCached = cachedArticles && cachedArticles.length > 0
-  
-  // Only use the API hook if we don't have cached articles
+
   const { data, isLoading, isError } = useSearch(query)
-  
-  // Determine which articles to use
+
   const articles = shouldUseCached ? cachedArticles : (data?.articles || [])
   const loading = shouldUseCached ? false : isLoading
   const error = shouldUseCached ? false : isError
-  
-  // Cache articles when data is loaded from API
-  if (!shouldUseCached && data && data.articles) {
-    cacheArticles(query, data.articles)
-  }
-  
-  console.log(`Results: Using ${shouldUseCached ? 'cached' : 'fresh'} articles (${articles.length} total)`)
+
+  useEffect(() => {
+    if (!shouldUseCached && data && data.articles) {
+      cacheArticles(query, data.articles)
+    }
+  }, [shouldUseCached, data, query, cacheArticles])
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-gray-200">
-        <div className="max-w-6xl mx-auto w-full px-4 py-3 flex items-center gap-3">
-          <a href="/" className="font-semibold text-gray-800">News Analyzer</a>
-          <form action="/search" method="get" className="ml-auto flex-1 max-w-xl">
-            <input name="q" defaultValue={query} className="w-full rounded-full border border-gray-300 px-5 py-2" />
-          </form>
-          <a href={`/game?q=${encodeURIComponent(query)}`} className="px-3 py-1 rounded bg-purple-600 text-white text-sm font-medium hover:bg-purple-700">Play Game</a>
-          <a href="/api-status" className="px-3 py-1 rounded bg-gray-600 text-white text-sm font-medium hover:bg-gray-700">API Status</a>
-          <div className="flex gap-2">
-            <button onClick={() => setView('spectrum')} className={`px-3 py-1 rounded border text-sm ${view==='spectrum' ? 'bg-gray-800 text-white' : 'bg-white text-gray-700'}`}>Spectrum</button>
-            <button onClick={() => setView('columns')} className={`px-3 py-1 rounded border text-sm ${view==='columns' ? 'bg-gray-800 text-white' : 'bg-white text-gray-700'}`}>Columns</button>
+    <div className="min-h-screen flex flex-col bg-paper-cream text-ink">
+      <Masthead />
+
+      <div className="border-b border-ink/15">
+        <div className="mx-auto w-full max-w-[1280px] px-12 py-6">
+          <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-5">
+            <form action="/search" method="get" className="flex-1 min-w-[280px]">
+              <label className="block font-sans text-[11px] uppercase tracking-[0.22em] text-ink/55">
+                Topic
+              </label>
+              <div className="mt-2 flex items-center border-b-2 border-ink pb-2">
+                <input
+                  name="q"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  className="flex-1 bg-transparent font-serif italic text-[24px] leading-tight text-ink placeholder:text-ink/30 focus:outline-none"
+                  placeholder="Search the news"
+                />
+                <button
+                  type="submit"
+                  className="ml-3 bg-ink px-3 py-1 font-sans text-[10px] uppercase tracking-[0.22em] text-paper-cream hover:bg-accent transition-colors"
+                >
+                  Search &rarr;
+                </button>
+              </div>
+            </form>
+
+            <div className="flex items-center gap-7">
+              <ViewToggle view={view} onChange={setView} />
+              <Link
+                to={`/play?q=${encodeURIComponent(query)}`}
+                className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink/65 underline decoration-ink/30 underline-offset-4 hover:text-ink hover:decoration-ink"
+              >
+                Play with this query &rarr;
+              </Link>
+            </div>
           </div>
+
+          {query && (
+            <div className="mt-4 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+              Showing analysis for{' '}
+              <span className="font-serif normal-case tracking-normal text-ink italic">
+                &ldquo;{query}&rdquo;
+              </span>
+            </div>
+          )}
         </div>
-      </header>
+      </div>
+
       <main className="flex-1">
         {loading && <LoadingSpectrum />}
         {!loading && !error && articles.length > 0 && (
-          view === 'spectrum' ? <Spectrum articles={articles} /> : <Columns articles={articles} />
+          view === 'spectrum'
+            ? <Spectrum articles={articles} />
+            : <Columns articles={articles} />
+        )}
+        {!loading && !error && articles.length === 0 && query && (
+          <div className="mx-auto max-w-3xl px-6 py-24 text-center font-serif italic text-ink/60">
+            No clippings filed for this query.
+          </div>
         )}
         {error && (
-          <div className="p-4 text-center text-red-600">Failed to load results.</div>
+          <div className="mx-auto max-w-3xl px-6 py-16 text-center font-serif text-accent">
+            Failed to load results.
+          </div>
         )}
       </main>
     </div>
+  )
+}
+
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  view: 'spectrum' | 'columns'
+  onChange: (v: 'spectrum' | 'columns') => void
+}) {
+  const opts: { id: 'spectrum' | 'columns'; label: string }[] = [
+    { id: 'spectrum', label: 'Spectrum' },
+    { id: 'columns', label: 'Columns' },
+  ]
+  return (
+    <div className="flex items-center gap-5 font-sans text-[11px] uppercase tracking-[0.22em]">
+      <span className="text-ink/45">View</span>
+      {opts.map((o) => {
+        const active = view === o.id
+        return (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => onChange(o.id)}
+            className={`pb-0.5 -mb-px border-b-2 transition-colors ${
+              active
+                ? 'text-ink border-accent'
+                : 'text-ink/55 border-transparent hover:text-ink'
+            }`}
+          >
+            {o.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+const PAGE_TRANSITION = {
+  duration: 0.22,
+  ease: [0.2, 0.65, 0.3, 1] as [number, number, number, number],
+}
+
+function PageTransition({
+  children,
+  pathKey,
+}: {
+  children: ReactElement
+  pathKey: string
+}) {
+  return (
+    <motion.div
+      key={pathKey}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      transition={PAGE_TRANSITION}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+function transitionKey(loc: Location): string {
+  // Group game sub-routes so they don't cross-fade between rounds, and so the
+  // game's internal animations are not interrupted.
+  if (loc.pathname.startsWith('/play/')) return loc.pathname.split('/').slice(0, 3).join('/')
+  return loc.pathname
+}
+
+function AnimatedRoutes() {
+  const location = useLocation()
+  const key = transitionKey(location)
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <PageTransition key={key} pathKey={key}>
+        <Routes location={location}>
+          <Route path="/" element={<Landing />} />
+          <Route path="/search" element={<Results />} />
+          <Route path="/article/:id" element={<ArticleDetail />} />
+          <Route path="/analyze" element={<Analyze />} />
+          <Route path="/play" element={<PlayHub />} />
+          <Route path="/play/detective" element={<Game />} />
+          <Route path="/play/source" element={<GuessSource />} />
+          <Route path="/play/compare" element={<CompareTakes />} />
+          <Route path="/play/rewrite" element={<HeadlineRewrite />} />
+          <Route
+            path="/inference-lab"
+            element={
+              <Suspense
+                fallback={
+                  <div className="min-h-screen bg-paper-cream flex items-center justify-center font-mono text-[12px] text-ink/55">
+                    {'> bootstrapping inference runtime …'}
+                  </div>
+                }
+              >
+                <InferenceLab />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/how-i-built-this"
+            element={
+              <Suspense
+                fallback={
+                  <div className="min-h-screen bg-paper-cream flex items-center justify-center font-mono text-[12px] text-ink/55">
+                    {'> loading methodology …'}
+                  </div>
+                }
+              >
+                <HowIBuiltThis />
+              </Suspense>
+            }
+          />
+          <Route path="/api-status" element={<APIStatusDashboard />} />
+          <Route path="/game" element={<Navigate to="/play/detective" replace />} />
+        </Routes>
+      </PageTransition>
+    </AnimatePresence>
   )
 }
 
@@ -214,15 +250,7 @@ export default function App() {
   return (
     <ArticlesProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/search" element={<Results />} />
-          <Route path="/game" element={<Game />} />
-          <Route path="/api-status" element={<APIStatusDashboard />} />
-          <Route path="/articles" element={<Articles />} />
-          <Route path="/articles/:id" element={<ArticleDetail />} />
-          <Route path="/narratives" element={<Narratives />} />
-        </Routes>
+        <AnimatedRoutes />
       </BrowserRouter>
     </ArticlesProvider>
   )

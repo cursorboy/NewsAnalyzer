@@ -1,0 +1,55 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e39]:
+    - generic [ref=e40]:
+      - paragraph [ref=e41]: Game 02 · Guess the Source
+      - generic [ref=e42]:
+        - button "♪ Off" [ref=e43] [cursor=pointer]
+        - generic [ref=e45]:
+          - text: "1"
+          - generic [ref=e46]: / 10
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - generic [ref=e61]: You
+        - generic [ref=e62]: "0"
+      - generic [ref=e63]: vs.
+      - generic [ref=e64]:
+        - generic [ref=e65]: TheBiasGraph v2
+        - generic [ref=e66]: "0"
+  - main [ref=e67]:
+    - generic [ref=e68]:
+      - article [ref=e69]:
+        - paragraph [ref=e70]: Clipping · masthead removed
+        - heading "Climate scientists warn Earth is hurtling toward catastrophic tipping points" [level=2] [ref=e71]
+        - paragraph [ref=e72]: Leading climate researchers issued a dire warning Tuesday, saying years of inaction have pushed the planet dangerously close to irreversible collapse of key ecosystems.
+      - generic [ref=e73]:
+        - paragraph [ref=e74]: Whose desk did this come from?
+        - generic [ref=e75]:
+          - button "The Guardian Pick →" [ref=e76] [cursor=pointer]:
+            - paragraph [ref=e77]: The Guardian
+            - paragraph [ref=e78]: Pick →
+          - button "CNN Pick →" [ref=e79] [cursor=pointer]:
+            - paragraph [ref=e80]: CNN
+            - paragraph [ref=e81]: Pick →
+          - button "MSNBC Pick →" [ref=e82] [cursor=pointer]:
+            - paragraph [ref=e83]: MSNBC
+            - paragraph [ref=e84]: Pick →
+          - button "Associated Press Pick →" [ref=e85] [cursor=pointer]:
+            - paragraph [ref=e86]: Associated Press
+            - paragraph [ref=e87]: Pick →
+      - generic [ref=e88]:
+        - link "← Quit session" [ref=e89] [cursor=pointer]:
+          - /url: /play
+        - generic [ref=e90]: Streak 0

@@ -1,0 +1,38 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "NeuralBias" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - button "NeuralBias v2 · 10,000hr" [ref=e11] [cursor=pointer]:
+        - generic [ref=e15]: NeuralBias v2
+        - generic [ref=e16]: ·
+        - generic [ref=e17]: 10,000hr
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]: Section B
+        - generic [ref=e22]: The lab
+      - generic [ref=e24]:
+        - heading "Analyze any article." [level=1] [ref=e25]
+        - paragraph [ref=e26]: Paste a body of text or hand the network a URL. NeuralBias v2 returns bias dimensions, loaded phrases, and a full inference receipt.
+    - generic [ref=e27]:
+      - generic [ref=e28]: Input
+      - generic [ref=e29]:
+        - tablist "Input mode" [ref=e30]:
+          - tab "Paste text" [selected] [ref=e31] [cursor=pointer]
+          - tab "From URL" [ref=e32] [cursor=pointer]
+          - generic [ref=e33]: 1 tokens (est.)
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - generic [ref=e36]: Headline (optional)
+            - textbox "Headline (optional)" [ref=e37]:
+              - /placeholder: Untitled draft
+          - generic [ref=e38]:
+            - generic [ref=e39]: Article body
+            - textbox "Article body" [ref=e40]:
+              - /placeholder: Paste the full article body here. The network needs at least a paragraph to score reliably.
+        - generic [ref=e41]:
+          - button "Run analysis →" [ref=e42] [cursor=pointer]
+          - generic [ref=e43]: 8 dimensions · live inference · receipt included

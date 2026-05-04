@@ -4,26 +4,8 @@
 
 @layer base {
   html { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; }
-}
-
-:root {
-  --bg: 255 255 255;
-  --fg: 17 24 39;
-}
-
-.dark :root {
-  --bg: 17 24 39;
-  --fg: 243 244 246;
-}
-
-html, body, #root {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  background-color: rgb(var(--bg));
-  color: rgb(var(--fg));
+  html, body, #root { height: 100%; }
+  body { margin: 0; }
 }
 
 @layer utilities {

@@ -1,0 +1,78 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e43]:
+    - link "← Quit" [ref=e44] [cursor=pointer]:
+      - /url: /play
+    - generic [ref=e46]:
+      - generic [ref=e47]: Game 04
+      - generic [ref=e48]: Headline Rewrite
+    - generic [ref=e49]:
+      - generic [ref=e50]:
+        - generic [ref=e51]: You
+        - generic [ref=e53]: "5"
+      - generic [ref=e54]: —
+      - generic [ref=e55]:
+        - generic [ref=e57]: "8"
+        - generic [ref=e58]: Network
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - text: "1"
+        - generic [ref=e61]: / 10
+      - button "Mute sound" [ref=e73] [cursor=pointer]: Sound on
+  - generic:
+    - generic: "+5"
+  - main [ref=e74]:
+    - generic [ref=e88]:
+      - generic [ref=e91]:
+        - generic [ref=e92]:
+          - generic [ref=e93]: ~
+          - generic [ref=e94]: Split decision.
+        - paragraph [ref=e95]: Decent — 53/100. Watch for loaded words.
+      - article [ref=e96]:
+        - paragraph [ref=e97]: Original
+        - heading "Senate Democrats torpedo bipartisan border deal, siding with open-borders activists" [level=3] [ref=e98]
+        - paragraph [ref=e99]: Your rewrite
+        - heading "Republicans propose spending bill cuts to food assistance and Medicaid" [level=3] [ref=e100]
+      - paragraph [ref=e101]: Offline mode · scored locally on tone, length, signal preservation, and distance.
+      - generic [ref=e102]:
+        - generic [ref=e103]:
+          - paragraph [ref=e104]: Network grade
+          - paragraph [ref=e105]: 44/ 100
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - term [ref=e108]: tone
+            - definition [ref=e109]: "86"
+          - generic [ref=e110]:
+            - term [ref=e111]: length match
+            - definition [ref=e112]: "55"
+          - generic [ref=e113]:
+            - term [ref=e114]: signal kept
+            - definition [ref=e115]: "0"
+          - generic [ref=e116]:
+            - term [ref=e117]: distance
+            - definition [ref=e118]: "0"
+      - generic [ref=e119]:
+        - generic [ref=e120]:
+          - paragraph [ref=e121]: Round
+          - paragraph [ref=e122]: You 5 · Net 8
+        - generic [ref=e123]:
+          - paragraph [ref=e124]: Cumulative
+          - paragraph [ref=e125]: 5 vs 8
+        - generic [ref=e126]:
+          - paragraph [ref=e127]: Streak
+          - paragraph [ref=e128]: "0"
+      - button "Next round" [ref=e130] [cursor=pointer]:
+        - text: Next round
+        - generic [ref=e131]: →

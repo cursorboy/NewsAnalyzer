@@ -1,0 +1,51 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e43]:
+    - link "← Quit" [ref=e44] [cursor=pointer]:
+      - /url: /play
+    - generic [ref=e46]:
+      - generic [ref=e47]: Game 01
+      - generic [ref=e48]: Bias Detective
+    - generic [ref=e49]:
+      - generic [ref=e50]:
+        - generic [ref=e51]: You
+        - generic [ref=e53]: "1"
+      - generic [ref=e54]: —
+      - generic [ref=e55]:
+        - generic [ref=e57]: "1"
+        - generic [ref=e58]: Network
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - text: "2"
+        - generic [ref=e61]: / 10
+      - button "Mute sound" [ref=e73] [cursor=pointer]: Sound on
+  - main [ref=e74]:
+    - generic [ref=e144]:
+      - article [ref=e145]:
+        - paragraph [ref=e146]: Clipping
+        - heading "Reckless GOP plan slams working families with deepest cuts in years" [level=2] [ref=e147]
+        - paragraph [ref=e148]: A devastating Republican spending bill, rammed through on a party-line vote, would gut food assistance and Medicaid for millions, advocates warned.
+        - paragraph [ref=e149]: Source withheld until reveal
+      - generic [ref=e150]:
+        - paragraph [ref=e151]: Drag the marker to where you think this clipping lives.
+        - generic [ref=e155]:
+          - generic [ref=e156]: Liberal
+          - generic [ref=e157]: Center
+          - generic [ref=e158]: Conservative
+      - generic [ref=e159]:
+        - generic [ref=e160]: Round 2 of 10
+        - button "File your guess" [disabled] [ref=e161]:
+          - text: File your guess
+          - generic [ref=e162]: →

@@ -1,0 +1,70 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e42]:
+    - generic [ref=e43]:
+      - link "← Quit" [ref=e44] [cursor=pointer]:
+        - /url: /play
+      - generic [ref=e46]:
+        - generic [ref=e47]: Game 03
+        - generic [ref=e48]: Compare Two Takes
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - generic [ref=e51]: You
+          - generic [ref=e53]: "1"
+        - generic [ref=e54]: —
+        - generic [ref=e55]:
+          - generic [ref=e57]: "1"
+          - generic [ref=e58]: Network
+      - generic [ref=e59]:
+        - generic [ref=e60]:
+          - text: "1"
+          - generic [ref=e61]: / 10
+        - button "Mute sound" [ref=e73] [cursor=pointer]: Sound on
+    - generic [ref=e74]: Topic · "inflation"
+  - main [ref=e75]:
+    - generic [ref=e107]:
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - generic [ref=e112]: ~
+          - generic [ref=e113]: Got one out of two.
+        - paragraph [ref=e114]: Got one out of two.
+      - generic [ref=e115]:
+        - article [ref=e116]:
+          - generic [ref=e117]:
+            - paragraph [ref=e118]: Take A
+            - paragraph [ref=e119]: score 0.08
+          - heading "Federal Reserve holds interest rates steady, citing mixed signals" [level=3] [ref=e120]
+          - paragraph [ref=e121]: The Wall Street Journal · Center
+        - article [ref=e122]:
+          - generic [ref=e123]:
+            - paragraph [ref=e124]: Take B
+            - paragraph [ref=e125]: score 0.00
+          - heading "Treasury releases analysis of new tax legislation impact" [level=3] [ref=e126]
+          - paragraph [ref=e127]: Bloomberg · Center
+      - generic [ref=e128]:
+        - generic [ref=e129]:
+          - paragraph [ref=e130]: More biased
+          - paragraph [ref=e131]: Actual A
+          - paragraph [ref=e132]: Your call A
+        - generic [ref=e133]:
+          - paragraph [ref=e134]: Direction
+          - paragraph [ref=e135]: Actual Center
+          - paragraph [ref=e136]: Your call Liberal
+        - generic [ref=e137]:
+          - paragraph [ref=e138]: Round
+          - paragraph [ref=e139]: You 1 · Net 1
+      - button "Next round" [ref=e141] [cursor=pointer]:
+        - text: Next round
+        - generic [ref=e142]: →

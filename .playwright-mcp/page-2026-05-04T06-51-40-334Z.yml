@@ -1,0 +1,38 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - main [ref=e98]:
+    - article [ref=e99]:
+      - generic [ref=e100]:
+        - paragraph [ref=e101]: Guess the Source
+        - heading "ROUND COMPLETE" [level=2] [ref=e102]
+      - generic [ref=e103]:
+        - generic [ref=e104]:
+          - paragraph [ref=e115]: You
+          - paragraph [ref=e105]: "2"
+          - paragraph [ref=e106]: of 10
+        - generic [ref=e109]:
+          - paragraph [ref=e116]: TheBiasGraph
+          - paragraph [ref=e110]: "7"
+          - paragraph [ref=e111]: of 10
+      - paragraph [ref=e117]: The network won this round.
+      - generic [ref=e118]:
+        - generic [ref=e119]:
+          - button "Play again" [ref=e120] [cursor=pointer]:
+            - text: Play again
+            - generic [ref=e121]: →
+          - button "Share ⤴" [ref=e122] [cursor=pointer]
+        - button "Back to games" [ref=e123] [cursor=pointer]:
+          - generic [ref=e124]: ←
+          - text: Back to games

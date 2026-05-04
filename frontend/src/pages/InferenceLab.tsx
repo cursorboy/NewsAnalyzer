@@ -1,0 +1,1294 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import Masthead from '../components/Masthead'
+import {
+  MODEL_ID,
+  MODEL_CARD_URL,
+  QUANTIZED,
+  loadModel,
+  runForwardPass,
+  tokenizePreview,
+  formatBytes,
+  formatMs,
+  sha256Hex,
+  type LoadedRuntime,
+  type InferenceArtifacts,
+  type ProgressEvent,
+} from '../lib/inferenceLab'
+
+const SAMPLE_TEXT =
+  "The reckless GOP plan slammed working families on Thursday."
+
+const SPECIAL_TOKENS = new Set(['[CLS]', '[SEP]', '[PAD]', '[UNK]', '[MASK]'])
+
+interface ProgressFile {
+  name: string
+  url?: string
+  loaded: number
+  total: number
+  done: boolean
+}
+
+interface LoaderLine {
+  id: number
+  ts: string
+  kind: string
+  text: string
+}
+
+let _loaderLineCounter = 0
+function makeLoaderLine(kind: string, text: string): LoaderLine {
+  const d = new Date()
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  const ss = String(d.getSeconds()).padStart(2, '0')
+  const ms = String(d.getMilliseconds()).padStart(3, '0')
+  return {
+    id: ++_loaderLineCounter,
+    ts: `${hh}:${mm}:${ss}.${ms}`,
+    kind,
+    text,
+  }
+}
+
+function classifyLogKind(text: string): string {
+  const t = text.toLowerCase()
+  if (t.startsWith('[fetch]')) return 'fetch'
+  if (t.startsWith('[done]')) return 'done'
+  if (t.startsWith('[ready]')) return 'ready'
+  if (t.includes('error')) return 'error'
+  if (t.includes('exposed')) return 'export'
+  if (t.includes('cache') || t.includes('idb')) return 'cache'
+  if (t.includes('forward path') || t.includes('runtime ready')) return 'init'
+  return 'info'
+}
+
+// ---------- the page ----------
+
+export default function InferenceLab() {
+  const [loaderLines, setLoaderLines] = useState<LoaderLine[]>([])
+  const [files, setFiles] = useState<Record<string, ProgressFile>>({})
+  const [loading, setLoading] = useState(false)
+  const [loaded, setLoaded] = useState<LoadedRuntime | null>(null)
+  const [text, setText] = useState(SAMPLE_TEXT)
+  const [tokenizedPreview, setTokenizedPreview] = useState<{
+    tokens: string[]
+    ids: number[]
+    spans: [number, number][]
+  } | null>(null)
+  const [running, setRunning] = useState(false)
+  const [artifacts, setArtifacts] = useState<InferenceArtifacts | null>(null)
+  const [logitsHash, setLogitsHash] = useState<string | null>(null)
+  const [inputHash, setInputHash] = useState<string | null>(null)
+  const [matchRuns, setMatchRuns] = useState(0)
+  const [hashesMatch, setHashesMatch] = useState(false)
+  const [selectedLayer, setSelectedLayer] = useState(0)
+  const [selectedHead, setSelectedHead] = useState(0)
+  const [wallClockDisplay, setWallClockDisplay] = useState(0)
+  const loaderRef = useRef<HTMLDivElement | null>(null)
+
+  const pushLoader = useCallback((kind: string, text: string) => {
+    setLoaderLines((prev) => [...prev, makeLoaderLine(kind, text)])
+  }, [])
+
+  const log = useCallback((text: string) => {
+    pushLoader(classifyLogKind(text), text)
+  }, [pushLoader])
+
+  const onProgress = useCallback((e: ProgressEvent) => {
+    if (!e.file && !e.name) return
+    const key = e.file ?? e.name ?? 'unknown'
+    setFiles((prev) => {
+      const cur =
+        prev[key] ?? ({ name: key, loaded: 0, total: 0, done: false } as ProgressFile)
+      if (e.status === 'initiate') {
+        return { ...prev, [key]: { ...cur, done: false } }
+      }
+      if (e.status === 'progress') {
+        return {
+          ...prev,
+          [key]: {
+            ...cur,
+            loaded: typeof e.loaded === 'number' ? e.loaded : cur.loaded,
+            total: typeof e.total === 'number' ? e.total : cur.total,
+          },
+        }
+      }
+      if (e.status === 'done') {
+        return {
+          ...prev,
+          [key]: {
+            ...cur,
+            done: true,
+            loaded: typeof e.total === 'number' ? e.total : cur.loaded,
+            total: typeof e.total === 'number' ? e.total : cur.total,
+          },
+        }
+      }
+      return prev
+    })
+  }, [])
+
+  const onLoad = useCallback(async () => {
+    if (loading || loaded) return
+    setLoading(true)
+    pushLoader('user', `> load model · ${MODEL_ID}`)
+    try {
+      const rt = await loadModel(onProgress, log)
+      setLoaded(rt)
+      pushLoader(
+        'ready',
+        `READY · ${rt.config.modelType} · ${rt.config.numLayers}L · ${rt.config.numHeads}H · d=${rt.config.hiddenDim}`,
+      )
+    } catch (err) {
+      pushLoader('error', `ERROR · ${(err as Error).message}`)
+    } finally {
+      setLoading(false)
+    }
+  }, [loading, loaded, log, onProgress, pushLoader])
+
+  // auto-scroll loader on new lines
+  useEffect(() => {
+    if (loaderRef.current) {
+      loaderRef.current.scrollTop = loaderRef.current.scrollHeight
+    }
+  }, [loaderLines.length])
+
+  // live tokenization (debounced)
+  useEffect(() => {
+    if (!loaded) return
+    const t = setTimeout(() => {
+      try {
+        const out = tokenizePreview(text)
+        setTokenizedPreview({ tokens: out.tokens, ids: out.ids, spans: out.charSpans })
+      } catch {
+        // ignore
+      }
+    }, 120)
+    return () => clearTimeout(t)
+  }, [text, loaded])
+
+  // count-up wall clock animation when artifacts arrive
+  useEffect(() => {
+    if (!artifacts) {
+      setWallClockDisplay(0)
+      return
+    }
+    const target = artifacts.forwardMs
+    const dur = 400
+    const t0 = performance.now()
+    let raf = 0
+    const tick = (now: number) => {
+      const e = Math.min(1, (now - t0) / dur)
+      const eased = 1 - Math.pow(1 - e, 3)
+      setWallClockDisplay(target * eased)
+      if (e < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [artifacts])
+
+  const runOnce = useCallback(async (): Promise<{ a: InferenceArtifacts; lhash: string } | null> => {
+    if (!loaded) return null
+    const a = await runForwardPass(text)
+    const lhash = await sha256Hex(JSON.stringify(a.logits))
+    return { a, lhash }
+  }, [loaded, text])
+
+  const onRunForward = useCallback(async () => {
+    if (!loaded || running) return
+    setRunning(true)
+    try {
+      const r = await runOnce()
+      if (!r) return
+      setArtifacts(r.a)
+      const ihash = await sha256Hex(text)
+      setInputHash(ihash)
+      setLogitsHash(r.lhash)
+      setMatchRuns(1)
+      setHashesMatch(true)
+      setSelectedLayer(r.a.attentions.length - 1)
+      setSelectedHead(0)
+    } catch (err) {
+      pushLoader('error', `ERROR · forward · ${(err as Error).message}`)
+    } finally {
+      setRunning(false)
+    }
+  }, [loaded, running, text, runOnce, pushLoader])
+
+  const onReRun = useCallback(async () => {
+    if (!loaded || running || !logitsHash) return
+    setRunning(true)
+    try {
+      const r = await runOnce()
+      if (!r) return
+      setArtifacts(r.a)
+      const same = r.lhash === logitsHash
+      setHashesMatch(same)
+      setMatchRuns((n) => (same ? n + 1 : 1))
+      if (!same) setLogitsHash(r.lhash)
+    } catch (err) {
+      pushLoader('error', `ERROR · re-run · ${(err as Error).message}`)
+    } finally {
+      setRunning(false)
+    }
+  }, [loaded, running, logitsHash, runOnce, pushLoader])
+
+  // ---------- derived ----------
+
+  const fileList = useMemo(() => Object.values(files), [files])
+  const allLoadedSize = fileList.reduce((a, f) => a + f.loaded, 0)
+  const charCount = text.length
+
+  return (
+    <div className="min-h-screen bg-paper-cream text-ink">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+        <Masthead subtitle="The Inference Lab" right="Notebook · No. 1" />
+      </motion.div>
+
+      <main>
+        {/* ---------- Lede ---------- */}
+        <motion.section
+          className="px-12 pt-16 pb-12"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.05 }}
+        >
+          <div className="grid grid-cols-12 gap-10 items-end">
+            <div className="col-span-7">
+              <div className="font-sans text-[11px] uppercase tracking-[0.24em] text-ink/55">
+                An exhibit, not a demo
+              </div>
+              <h2 className="mt-4 font-display font-black text-ink tracking-mega-tight leading-[0.94] text-[80px]">
+                The model
+                <br />
+                shows its work.
+              </h2>
+            </div>
+            <div className="col-span-5 border-l border-ink/20 pl-10">
+              <p className="font-serif text-[18px] italic text-ink/70 leading-snug">
+                The rest of the site says "custom neural network." This page proves it. Click{' '}
+                <span className="not-italic">Load model</span> and a real transformer downloads to
+                your browser — its tokenizer, layers, attention heatmaps, logits, and SHA-256
+                hashes are all on the page.
+              </p>
+              <p className="mt-4 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+                Note · this is the small DistilBERT companion. Production runs DeBERTa-v3
+                server-side with 8 classification heads. Both share the same comparison-bias
+                training corpus.
+              </p>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* ---------- §I + §II — Model card + Loader ---------- */}
+        <ScrollSection>
+          <div className="border-t border-ink/15 px-12 py-12">
+            <div className="grid grid-cols-12 gap-8 items-start">
+              <div className="col-span-7">
+                <SectionHeader numeral="§ I" label="Model card" />
+                <ModelCard loaded={loaded} />
+              </div>
+              <div className="col-span-5">
+                <SectionHeader numeral="§ II" label="Loader" />
+                <LoaderTerminal
+                  ref={loaderRef}
+                  lines={loaderLines}
+                  loaded={loaded}
+                  loading={loading}
+                  onLoad={onLoad}
+                  loadedBytes={loaded?.totalBytes || allLoadedSize}
+                  files={fileList}
+                />
+              </div>
+            </div>
+          </div>
+        </ScrollSection>
+
+        {/* ---------- §III Tokenizer ---------- */}
+        <ScrollSection>
+          <div className="border-t border-ink/15 px-12 py-12">
+            <SectionHeader numeral="§ III" label="Tokenizer" />
+            <TokenizerPanel
+              text={text}
+              setText={setText}
+              loaded={loaded}
+              tokenizedPreview={tokenizedPreview}
+              charCount={charCount}
+            />
+          </div>
+        </ScrollSection>
+
+        {/* ---------- §IV Forward pass ---------- */}
+        <ScrollSection>
+          <div className="border-t border-ink/15 px-12 py-12">
+            <div className="flex items-end justify-between">
+              <SectionHeader numeral="§ IV" label="Forward pass" />
+              <div className="text-right pb-2">
+                <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+                  Wall clock
+                </div>
+                <div className="font-mono text-[18px] tabular-nums text-ink">
+                  {artifacts ? `${wallClockDisplay.toFixed(3)} ms` : '— · —'}
+                </div>
+              </div>
+            </div>
+            <ForwardPassPanel
+              loaded={loaded}
+              artifacts={artifacts}
+              running={running}
+              selectedLayer={selectedLayer}
+              setSelectedLayer={setSelectedLayer}
+              selectedHead={selectedHead}
+              setSelectedHead={setSelectedHead}
+              onRun={onRunForward}
+              onReRun={onReRun}
+            />
+          </div>
+        </ScrollSection>
+
+        {/* ---------- §V + §VI — Saliency + Hashes ---------- */}
+        <ScrollSection>
+          <div className="border-t border-ink/15 px-12 py-12">
+            <div className="grid grid-cols-12 gap-8 items-start">
+              <div className="col-span-7">
+                <SectionHeader numeral="§ V" label="Saliency" />
+                <SaliencyPanel artifacts={artifacts} />
+              </div>
+              <div className="col-span-5">
+                <SectionHeader numeral="§ VI" label="Hashes" />
+                <HashesPanel
+                  inputHash={inputHash}
+                  logitsHash={logitsHash}
+                  matchRuns={matchRuns}
+                  hashesMatch={hashesMatch}
+                />
+              </div>
+            </div>
+          </div>
+        </ScrollSection>
+
+        {/* ---------- §VII Devtools ---------- */}
+        <ScrollSection>
+          <div className="border-t border-ink/15 px-12 py-12">
+            <div className="grid grid-cols-12 gap-8 items-start">
+              <div className="col-span-5">
+                <div className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink/55">
+                  Closing note
+                </div>
+                <h3 className="mt-3 font-display font-black text-ink tracking-display-tight leading-[1.0] text-[30px]">
+                  Don't trust me — run it yourself.
+                </h3>
+                <p className="mt-4 font-serif text-[16px] italic text-ink/70 leading-snug">
+                  The whole point of this page is that you can. Open the browser console, call{' '}
+                  <span className="not-italic font-mono text-[14px] text-ink">tbgInfer(text)</span>{' '}
+                  with anything you like, and verify the page is showing what the model actually
+                  produces.
+                </p>
+                <Link
+                  to="/how-i-built-this"
+                  className="mt-6 inline-block font-sans text-[12px] uppercase tracking-[0.22em] text-ink border-b border-ink pb-1 hover:text-accent hover:border-accent transition-colors"
+                >
+                  Read the methodology &rarr;
+                </Link>
+              </div>
+              <div className="col-span-7">
+                <SectionHeader numeral="§ VII" label="Devtools" />
+                <DevtoolsPanel artifacts={artifacts} text={text} />
+              </div>
+            </div>
+          </div>
+        </ScrollSection>
+
+        <footer className="border-t border-ink/15 px-12 py-7 flex items-center justify-between font-sans text-[11px] uppercase tracking-[0.22em] text-ink/55">
+          <span>TheBiasGraph &middot; Inference Lab</span>
+          <span>
+            @xenova/transformers
+            {loaded ? ` · v${loaded.transformersVersion}` : ''} &middot; ONNX Runtime Web
+          </span>
+        </footer>
+      </main>
+    </div>
+  )
+}
+
+// ---------- atomic editorial subcomponents ----------
+
+function ScrollSection({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.35 }}
+    >
+      {children}
+    </motion.section>
+  )
+}
+
+function SectionHeader({ numeral, label }: { numeral: string; label: string }) {
+  return (
+    <div className="mb-6">
+      <div className="flex items-baseline gap-3 font-sans text-[10px] uppercase tracking-[0.24em] text-ink/65">
+        <span className="text-ink">{numeral}</span>
+        <span className="text-ink/30">—</span>
+        <span>{label}</span>
+        <span className="ml-2 flex-1 border-t border-ink/20" />
+      </div>
+    </div>
+  )
+}
+
+// ---------- §I — Model card ----------
+
+function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
+  const cfg = loaded?.config
+  const tk = loaded?.tokenizerInfo
+  const rows: Array<[string, string]> = [
+    ['Model', MODEL_ID],
+    ['Architecture', cfg ? `${cfg.modelType} · ${cfg.architectures[0] ?? 'encoder-only'}` : 'DistilBERT (encoder-only)'],
+    ['Layers · Heads', cfg ? `${cfg.numLayers} · ${cfg.numHeads}` : '6 · 12'],
+    ['Hidden dim', cfg ? String(cfg.hiddenDim) : '768'],
+    ['Intermediate dim', cfg ? String(cfg.intermediateDim) : '3072'],
+    ['Vocab', cfg ? cfg.vocabSize.toLocaleString() : '30,522'],
+    ['Max position', cfg ? String(cfg.maxPositionEmbeddings) : '512'],
+    ['Parameters', '66M'],
+    ['Tokenizer', tk ? tk.type : 'WordPiece'],
+    ['Quantization', QUANTIZED ? 'int8 · ~47 MB' : 'fp32 · ~265 MB'],
+  ]
+  return (
+    <div className="border-2 border-ink p-6 bg-paper">
+      <div className="flex items-baseline justify-between">
+        <div>
+          <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+            distilbert-base-uncased
+          </div>
+          <h2 className="mt-2 font-display font-black text-ink tracking-display-tight leading-[1.0] text-[34px]">
+            A small companion.
+          </h2>
+          <p className="mt-1 font-serif italic text-ink/60 text-[14px]">
+            Same architectural family our composite head sits on top of.
+          </p>
+        </div>
+        <a
+          href={MODEL_CARD_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="font-sans text-[11px] uppercase tracking-[0.2em] text-ink border-b border-ink pb-1 hover:text-accent hover:border-accent transition-colors"
+        >
+          View on Hugging Face &rarr;
+        </a>
+      </div>
+      <div
+        className="mt-6 grid grid-cols-2 gap-x-10 gap-y-1 font-mono text-[13px]"
+      >
+        {rows.map(([k, v]) => (
+          <div
+            key={k}
+            className="flex items-baseline justify-between gap-3 border-b border-ink/15 py-1.5"
+          >
+            <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink/55">
+              {k}
+            </span>
+            <span className="text-ink truncate text-right tabular-nums">{v}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex items-baseline justify-between font-sans text-[10px] uppercase tracking-[0.18em] text-ink/45">
+        <span>Powered by transformers.js · ONNX Runtime Web</span>
+        {loaded ? <span>v{loaded.transformersVersion}</span> : <span>not loaded</span>}
+      </div>
+    </div>
+  )
+}
+
+// ---------- §II — Loader terminal ----------
+
+const LoaderTerminal = ({
+  ref,
+  lines,
+  loaded,
+  loading,
+  onLoad,
+  loadedBytes,
+  files,
+}: {
+  ref: React.RefObject<HTMLDivElement | null>
+  lines: LoaderLine[]
+  loaded: LoadedRuntime | null
+  loading: boolean
+  onLoad: () => void
+  loadedBytes: number
+  files: ProgressFile[]
+}) => {
+  return (
+    <div className="border-2 border-ink bg-ink text-paper-cream p-4 min-h-[280px] flex flex-col">
+      <div className="flex items-center justify-between mb-3 font-sans text-[10px] uppercase tracking-[0.22em] text-paper-cream/60">
+        <span>tbg-lab.log</span>
+        <span>{lines.length} lines</span>
+      </div>
+      <div
+        ref={ref}
+        className="flex-1 overflow-auto font-mono text-[12px] leading-[1.55] space-y-0.5"
+        style={{ maxHeight: 320 }}
+      >
+        {lines.length === 0 ? (
+          <span className="text-paper-cream/35">{'> idle · click "Load model" below'}</span>
+        ) : (
+          <AnimatePresence initial={false}>
+            {lines.map((l) => (
+              <motion.div
+                key={l.id}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+                className="flex items-baseline gap-3"
+              >
+                <span className="text-paper-cream/40 tabular-nums shrink-0 w-[88px]">
+                  [{l.ts}]
+                </span>
+                <span
+                  className={`shrink-0 w-[60px] uppercase tracking-[0.18em] text-[10px] font-sans ${
+                    l.kind === 'error'
+                      ? 'text-accent'
+                      : l.kind === 'ready' || l.kind === 'done' || l.kind === 'export'
+                        ? 'text-emerald-400'
+                        : 'text-accent'
+                  }`}
+                >
+                  {l.kind}
+                </span>
+                <span className="text-paper-cream break-all">{l.text}</span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
+
+      {/* file progress row */}
+      {files.length > 0 && !loaded && (
+        <div className="mt-3 space-y-1">
+          {files.slice(-3).map((f) => {
+            const pct = f.total > 0 ? Math.min(100, (f.loaded / f.total) * 100) : f.done ? 100 : 0
+            return (
+              <div key={f.name} className="font-mono text-[10px] text-paper-cream/70">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="truncate">{f.name}</span>
+                  <span className="tabular-nums shrink-0">
+                    {formatBytes(f.loaded)}
+                    {f.total ? ` / ${formatBytes(f.total)}` : ''} · {pct.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="mt-0.5 h-[2px] w-full bg-paper-cream/15">
+                  <div className="h-full bg-emerald-400" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* footer */}
+      <div className="mt-4 flex items-center justify-between gap-3">
+        {loaded ? (
+          <div className="flex items-center gap-2 font-sans text-[10px] uppercase tracking-[0.22em] text-emerald-400">
+            <span className="inline-block h-[8px] w-[8px] bg-emerald-400" aria-hidden />
+            <span>
+              READY · {formatBytes(loadedBytes)} · cached in IndexedDB
+            </span>
+          </div>
+        ) : (
+          <span className="font-sans text-[10px] uppercase tracking-[0.22em] text-paper-cream/55">
+            {loading ? 'streaming…' : 'awaiting input'}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={onLoad}
+          disabled={loading || !!loaded}
+          className="bg-paper-cream text-ink px-4 py-2 font-sans text-[11px] uppercase tracking-[0.22em] hover:bg-paper transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {loaded ? 'Loaded' : loading ? 'Loading…' : 'Load model'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ---------- §III Tokenizer ----------
+
+function TokenizerPanel({
+  text,
+  setText,
+  loaded,
+  tokenizedPreview,
+  charCount,
+}: {
+  text: string
+  setText: (t: string) => void
+  loaded: LoadedRuntime | null
+  tokenizedPreview: { tokens: string[]; ids: number[]; spans: [number, number][] } | null
+  charCount: number
+}) {
+  return (
+    <div>
+      <div className="grid grid-cols-12 gap-8 items-start">
+        <div className="col-span-8">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            disabled={!loaded}
+            rows={3}
+            className="w-full bg-paper-cream border border-ink/30 p-4 font-serif italic text-[18px] text-ink leading-[1.55] resize-none focus:outline-none focus:border-ink disabled:opacity-50"
+            placeholder={loaded ? 'Type something to tokenize …' : 'Load the model first.'}
+          />
+        </div>
+        <div className="col-span-4 text-right pt-1">
+          <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+            seq · chars · max
+          </div>
+          <div className="mt-1 font-mono text-[13px] tabular-nums text-ink">
+            {tokenizedPreview ? tokenizedPreview.tokens.length : 0} ·{' '}
+            {charCount} ·{' '}
+            {tokenizedPreview ? tokenizedPreview.tokens.length : 0}/
+            {loaded?.config.maxPositionEmbeddings ?? 512}
+          </div>
+          <div className="mt-3 font-serif italic text-[13px] text-ink/55">
+            tokens come straight from{' '}
+            <span className="not-italic font-mono text-[12px] text-ink">tokenizer(text).input_ids</span>
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 flex flex-wrap">
+        {tokenizedPreview && tokenizedPreview.tokens.length > 0 ? (
+          <AnimatePresence initial={false}>
+            {tokenizedPreview.tokens.map((tok, i) => {
+              const isSpecial = SPECIAL_TOKENS.has(tok)
+              return (
+                <motion.span
+                  key={`${i}-${tok}-${tokenizedPreview.ids[i]}`}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.12 }}
+                  className="inline-flex flex-col items-center border border-ink/30 bg-paper px-2 py-1 mr-1.5 mb-1.5 min-w-[44px]"
+                >
+                  <span
+                    className={`font-mono text-[13px] ${
+                      isSpecial ? 'text-accent' : 'text-ink'
+                    }`}
+                  >
+                    {tok}
+                  </span>
+                  <span className="font-mono text-[10px] tabular-nums text-ink/50">
+                    {tokenizedPreview.ids[i]}
+                  </span>
+                </motion.span>
+              )
+            })}
+          </AnimatePresence>
+        ) : (
+          <span className="font-mono text-[12px] text-ink/40">
+            {loaded ? '> waiting for input …' : '> load model to enable tokenizer'}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------- §IV Forward pass ----------
+
+function ForwardPassPanel({
+  loaded,
+  artifacts,
+  running,
+  selectedLayer,
+  setSelectedLayer,
+  selectedHead,
+  setSelectedHead,
+  onRun,
+  onReRun,
+}: {
+  loaded: LoadedRuntime | null
+  artifacts: InferenceArtifacts | null
+  running: boolean
+  selectedLayer: number
+  setSelectedLayer: (n: number) => void
+  selectedHead: number
+  setSelectedHead: (n: number) => void
+  onRun: () => void
+  onReRun: () => void
+}) {
+  return (
+    <div>
+      <div className="grid grid-cols-12 gap-8">
+        {/* Hidden state shapes */}
+        <div className="col-span-4">
+          <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55 mb-2">
+            Hidden states · per layer
+          </div>
+          <div className="font-mono text-[12px]">
+            {artifacts ? (
+              artifacts.hiddenStateShapes.map((s, i) => (
+                <motion.div
+                  key={`shape-${i}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: i * 0.04, duration: 0.18 }}
+                  className="border-b border-ink/15 py-1.5"
+                >
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-ink/55">layer_{i}</span>
+                    <span className="text-ink tabular-nums">
+                      [{s[0]}, {s[1]}, {s[2]}]
+                    </span>
+                  </div>
+                  <div className="mt-1 text-ink/55 tabular-nums text-[10px] leading-[1.5] break-all">
+                    [CLS] = [
+                    {artifacts.hiddenStateClsHead[i]
+                      ?.slice(0, 8)
+                      .map((v) => v.toFixed(3))
+                      .join(', ')}
+                    ]
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <div className="text-ink/40">layer_0 · awaiting forward pass</div>
+            )}
+          </div>
+          <div className="mt-3 font-serif italic text-[11px] text-ink/55">
+            output_hidden_states = true
+          </div>
+        </div>
+
+        {/* Attention heatmap */}
+        <div className="col-span-4">
+          <div className="flex items-baseline justify-between mb-2 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+            <span>
+              Attention · L={selectedLayer} · H={selectedHead}
+            </span>
+            <span className="text-ink/40">
+              {artifacts ? `${artifacts.tokenStrings.length}×${artifacts.tokenStrings.length}` : '12×12'}
+            </span>
+          </div>
+          <AttentionGrid
+            artifacts={artifacts}
+            selectedLayer={selectedLayer}
+            selectedHead={selectedHead}
+          />
+          <div className="mt-3 flex items-center gap-2 font-sans text-[10px] uppercase tracking-[0.18em] text-ink/55">
+            <span>layer</span>
+            <select
+              value={selectedLayer}
+              onChange={(e) => setSelectedLayer(Number(e.target.value))}
+              disabled={!artifacts}
+              className="border border-ink/30 bg-paper px-2 py-0.5 font-mono text-[11px] tracking-normal text-ink"
+            >
+              {(artifacts?.attentions ?? Array.from({ length: 6 })).map((_, i) => (
+                <option key={i} value={i}>
+                  layer {i}
+                </option>
+              ))}
+            </select>
+            <span className="ml-3">head</span>
+            <select
+              value={selectedHead}
+              onChange={(e) => setSelectedHead(Number(e.target.value))}
+              disabled={!artifacts}
+              className="border border-ink/30 bg-paper px-2 py-0.5 font-mono text-[11px] tracking-normal text-ink"
+            >
+              {(artifacts?.attentions[0] ?? Array.from({ length: 12 })).map((_, i) => (
+                <option key={i} value={i}>
+                  head {i}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* [CLS] sparkline + logits */}
+        <div className="col-span-4">
+          <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55 mb-2">
+            [CLS] pooled · 256 of {loaded?.config.hiddenDim ?? 768}
+          </div>
+          <ClsSparkline values={artifacts?.pooledCls ?? null} />
+          <div className="mt-2 flex justify-between font-mono text-[10px] tabular-nums text-ink/55">
+            <span>
+              min{' '}
+              {artifacts ? Math.min(...artifacts.pooledCls).toFixed(3) : '—'}
+            </span>
+            <span>
+              max{' '}
+              {artifacts ? Math.max(...artifacts.pooledCls).toFixed(3) : '—'}
+            </span>
+          </div>
+
+          <div className="mt-5">
+            <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55 mb-1.5">
+              Logits · softmax
+            </div>
+            <div className="space-y-1.5 font-mono text-[12px]">
+              {(artifacts?.logits ?? [null, null]).map((lg, i) => {
+                const labels = loaded?.config.id2label ?? { 0: 'NEGATIVE', 1: 'POSITIVE' }
+                const label = labels[i] ?? `c${i}`
+                const prob = artifacts?.probs[i] ?? null
+                const top = artifacts ? i === artifacts.argmax : false
+                return (
+                  <div
+                    key={i}
+                    className={`flex items-baseline gap-3 border-b border-ink/10 py-1 ${
+                      top ? 'text-ink' : 'text-ink/55'
+                    }`}
+                  >
+                    <span className="font-sans w-20 uppercase tracking-[0.18em] text-[10px]">
+                      {label}
+                    </span>
+                    <span className="tabular-nums">
+                      {lg !== null ? `${lg >= 0 ? '+' : ''}${lg.toFixed(3)}` : '—'}
+                    </span>
+                    <span className="ml-auto tabular-nums">
+                      {prob !== null ? `${(prob * 100).toFixed(2)}%` : '—'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="mt-3 font-sans text-[11px] uppercase tracking-[0.18em] text-ink/55">
+              argmax &rarr;{' '}
+              <span className="text-accent">{artifacts?.argmaxLabel ?? '—'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 flex items-center justify-end gap-3">
+        <button
+          type="button"
+          onClick={onReRun}
+          disabled={!artifacts || running}
+          className="border border-ink px-4 py-2 font-sans text-[11px] uppercase tracking-[0.18em] text-ink hover:bg-ink hover:text-paper-cream transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {running ? 'running…' : 'Re-run'}
+        </button>
+        <button
+          type="button"
+          onClick={onRun}
+          disabled={!loaded || running}
+          className="bg-ink text-paper-cream px-5 py-2 font-sans text-[11px] uppercase tracking-[0.18em] hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {running ? 'computing…' : 'Run forward pass →'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function AttentionGrid({
+  artifacts,
+  selectedLayer,
+  selectedHead,
+}: {
+  artifacts: InferenceArtifacts | null
+  selectedLayer: number
+  selectedHead: number
+}) {
+  // Choose matrix; fall back to a static placeholder grid
+  const placeholderN = 12
+  const matrix = useMemo(() => {
+    if (artifacts) {
+      const m = artifacts.attentions[selectedLayer]?.[selectedHead]
+      if (m) return m
+    }
+    // diagonal-emphasized placeholder
+    const N = placeholderN
+    return Array.from({ length: N }, (_, i) =>
+      Array.from({ length: N }, (_, j) =>
+        Math.exp(-Math.abs(i - j) / 3) * 0.4 + (j === 0 ? 0.2 : 0),
+      ),
+    )
+  }, [artifacts, selectedLayer, selectedHead])
+
+  const N = matrix.length
+  const max = useMemo(() => {
+    let m = 0
+    for (const row of matrix) for (const v of row) if (v > m) m = v
+    return m || 1
+  }, [matrix])
+
+  const center = (N - 1) / 2
+  const maxRadius = Math.hypot(center, center) || 1
+
+  // animation key forces re-mount on layer/head change → radial wave plays again
+  const key = artifacts ? `${selectedLayer}-${selectedHead}` : 'placeholder'
+
+  return (
+    <div
+      key={key}
+      className="grid border border-ink/30 bg-paper"
+      style={{
+        gridTemplateColumns: `repeat(${N}, 1fr)`,
+        gridAutoRows: '12px',
+      }}
+    >
+      {matrix.flatMap((row, i) =>
+        row.map((v, j) => {
+          const dist = Math.hypot(i - center, j - center) / maxRadius
+          const delay = dist * 0.4 + 0.05
+          const intensity = (v / max) * 0.85
+          return (
+            <motion.div
+              key={`${i}-${j}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2, delay }}
+              style={{ background: `rgba(185, 28, 28, ${intensity})` }}
+            />
+          )
+        }),
+      )}
+    </div>
+  )
+}
+
+function ClsSparkline({ values }: { values: number[] | null }) {
+  // bucket to 256 cells
+  const bucketed = useMemo(() => {
+    if (!values || values.length === 0) {
+      return Array.from({ length: 256 }, () => 0)
+    }
+    const target = 256
+    if (values.length <= target) return values
+    const out: number[] = []
+    const w = values.length / target
+    for (let i = 0; i < target; i++) {
+      const start = Math.floor(i * w)
+      const end = Math.floor((i + 1) * w)
+      let s = 0
+      for (let j = start; j < end; j++) s += values[j]
+      out.push(s / Math.max(1, end - start))
+    }
+    return out
+  }, [values])
+
+  const max = useMemo(() => {
+    let m = 1e-6
+    for (const v of bucketed) if (Math.abs(v) > m) m = Math.abs(v)
+    return m
+  }, [bucketed])
+
+  // Build a path string for animated stroke draw
+  const path = useMemo(() => {
+    if (!values || values.length === 0) return 'M 0 30 L 256 30'
+    let d = ''
+    bucketed.forEach((v, i) => {
+      const y = 30 - (v / max) * 26
+      d += `${i === 0 ? 'M' : 'L'} ${i + 0.5} ${y.toFixed(2)} `
+    })
+    return d.trim()
+  }, [bucketed, max, values])
+
+  const hasData = !!values && values.length > 0
+
+  return (
+    <svg viewBox="0 0 256 60" width="100%" height="60" preserveAspectRatio="none">
+      <line x1="0" y1="30" x2="256" y2="30" stroke="rgba(17,17,17,0.2)" strokeWidth="0.5" />
+      {hasData ? (
+        <>
+          {bucketed.map((v, i) => {
+            const y = 30 - (v / max) * 26
+            return (
+              <line
+                key={i}
+                x1={i + 0.5}
+                y1={30}
+                x2={i + 0.5}
+                y2={y}
+                stroke="rgba(17,17,17,0.45)"
+                strokeWidth="0.7"
+              />
+            )
+          })}
+          <motion.path
+            d={path}
+            fill="none"
+            stroke="#B91C1C"
+            strokeWidth="1"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.8, ease: 'easeInOut' }}
+          />
+        </>
+      ) : (
+        Array.from({ length: 64 }).map((_, i) => (
+          <line
+            key={i}
+            x1={i * 4 + 2}
+            y1={30 - 2}
+            x2={i * 4 + 2}
+            y2={30 + 2}
+            stroke="rgba(17,17,17,0.15)"
+            strokeWidth="0.7"
+          />
+        ))
+      )}
+    </svg>
+  )
+}
+
+// ---------- §V Saliency ----------
+
+function SaliencyPanel({ artifacts }: { artifacts: InferenceArtifacts | null }) {
+  return (
+    <div className="border border-ink/30 bg-paper p-6">
+      <div className="flex items-baseline justify-between gap-4">
+        <div>
+          <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+            Attention rollout (Abnar &amp; Zuidema 2020)
+          </div>
+          <h3 className="mt-1 font-display font-black text-ink tracking-display-tight leading-[1.0] text-[26px]">
+            Where the model looked.
+          </h3>
+        </div>
+        <span className="font-mono text-[11px] text-ink/45">
+          A_rollout = ∏ Â_l
+        </span>
+      </div>
+      <div className="mt-5 flex flex-wrap gap-1.5">
+        {artifacts ? (
+          <SaliencyChips
+            tokens={artifacts.tokenStrings}
+            scores={artifacts.rollout}
+          />
+        ) : (
+          <span className="font-mono text-[12px] text-ink/40">
+            {'> run forward pass to compute rollout.'}
+          </span>
+        )}
+      </div>
+      <div className="mt-4 flex items-center gap-2 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+        <span>low</span>
+        <div
+          className="flex-1 h-2 border border-ink/15"
+          style={{ background: 'linear-gradient(to right, transparent, #B91C1C)' }}
+        />
+        <span>high</span>
+      </div>
+    </div>
+  )
+}
+
+function SaliencyChips({ tokens, scores }: { tokens: string[]; scores: number[] }) {
+  const max = useMemo(() => {
+    let m = 0
+    for (const s of scores) if (s > m) m = s
+    return m || 1
+  }, [scores])
+
+  return (
+    <>
+      {tokens.map((tok, i) => {
+        const isSpecial = SPECIAL_TOKENS.has(tok)
+        const display = tok.startsWith('##') ? tok.slice(2) : tok
+        const target = (scores[i] / max) * 0.7
+        return (
+          <motion.span
+            key={`${i}-${tok}`}
+            initial={{ backgroundColor: 'rgba(185, 28, 28, 0)' }}
+            animate={{ backgroundColor: `rgba(185, 28, 28, ${target.toFixed(3)})` }}
+            transition={{ duration: 0.6, delay: i * 0.03 }}
+            className="px-2 py-1 text-[14px]"
+            style={{
+              fontFamily: isSpecial
+                ? 'ui-monospace, Menlo, monospace'
+                : '"Source Serif 4", serif',
+              color: isSpecial ? '#B91C1C' : '#111',
+            }}
+          >
+            {display}
+          </motion.span>
+        )
+      })}
+    </>
+  )
+}
+
+// ---------- §VI Hashes ----------
+
+function HashesPanel({
+  inputHash,
+  logitsHash,
+  matchRuns,
+  hashesMatch,
+}: {
+  inputHash: string | null
+  logitsHash: string | null
+  matchRuns: number
+  hashesMatch: boolean
+}) {
+  return (
+    <div className="space-y-4">
+      <HashBlock label="Input · sha-256" value={inputHash} />
+      <HashBlock label="Logits · sha-256" value={logitsHash} />
+      <AnimatePresence>
+        {logitsHash && hashesMatch && matchRuns > 0 && (
+          <motion.div
+            key={`match-${matchRuns}`}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-2 font-sans text-[11px] uppercase tracking-[0.22em] text-emerald-700"
+          >
+            <span
+              className="inline-block h-[10px] w-[10px] bg-emerald-700"
+              aria-hidden
+            />
+            <span>
+              MATCH &middot; {matchRuns} run{matchRuns === 1 ? '' : 's'}
+            </span>
+          </motion.div>
+        )}
+        {logitsHash && !hashesMatch && (
+          <motion.div
+            key="diverge"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-2 font-sans text-[11px] uppercase tracking-[0.22em] text-accent"
+          >
+            <span className="inline-block h-[10px] w-[10px] bg-accent" aria-hidden />
+            <span>diverged · floating-point in WASM threads</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <p className="font-serif italic text-[12px] text-ink/55">
+        Computed via{' '}
+        <span className="not-italic font-mono text-[11px] text-ink">
+          crypto.subtle.digest('SHA-256', …)
+        </span>
+        .
+      </p>
+    </div>
+  )
+}
+
+function HashBlock({ label, value }: { label: string; value: string | null }) {
+  // Type-in animation on hash change
+  const [shown, setShown] = useState('')
+  useEffect(() => {
+    if (!value) {
+      setShown('')
+      return
+    }
+    let cancelled = false
+    setShown('')
+    let i = 0
+    const tick = () => {
+      if (cancelled) return
+      i = Math.min(i + 4, value.length)
+      setShown(value.slice(0, i))
+      if (i < value.length) {
+        setTimeout(tick, 10)
+      }
+    }
+    tick()
+    return () => {
+      cancelled = true
+    }
+  }, [value])
+
+  return (
+    <div className="border border-ink/30 bg-paper p-4">
+      <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+        {label}
+      </div>
+      <div className="mt-2 font-mono text-[11px] break-all leading-relaxed text-ink min-h-[40px]">
+        {value ? (
+          <>
+            {shown}
+            {shown.length < value.length && (
+              <span className="inline-block w-[6px] h-[12px] bg-ink/40 align-middle ml-0.5 animate-pulse" />
+            )}
+          </>
+        ) : (
+          <span className="text-ink/40">—</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------- §VII Devtools ----------
+
+function DevtoolsPanel({
+  artifacts,
+  text,
+}: {
+  artifacts: InferenceArtifacts | null
+  text: string
+}) {
+  const truncatedInput =
+    text.length > 48 ? `${text.slice(0, 45)}...` : text
+  const reply = artifacts
+    ? `{ label: "${artifacts.argmaxLabel}", probs: [${artifacts.probs.map((p) => p.toFixed(3)).join(', ')}], logits: [${artifacts.logits.map((l) => l.toFixed(3)).join(', ')}], tokens: [${artifacts.tokenStrings.length}] }`
+    : '{ … run forward pass to populate … }'
+
+  const lines: Array<['>' | '<', string]> = [
+    ['>', `await window.tbgInfer("${truncatedInput}")`],
+    ['<', reply],
+    ['>', 'window.tbgConfig'],
+    [
+      '<',
+      artifacts
+        ? `{ model: "${MODEL_ID.split('/')[1]}", layers: 6, heads: 12, hidden: 768 }`
+        : '{ … }',
+    ],
+  ]
+
+  const globals: Array<[string, string]> = [
+    ['window.tbgModel', 'AutoModelForSequenceClassification instance'],
+    ['window.tbgTokenizer', 'AutoTokenizer instance — call as a function'],
+    ['window.tbgConfig', 'parsed config.json (layers, heads, hidden, vocab)'],
+    ['window.tbgInfer(text)', 'runs the full forward pass and returns artifacts'],
+  ]
+
+  return (
+    <div className="space-y-4">
+      <div className="border-2 border-ink bg-ink text-paper-cream p-5 font-mono text-[12px] leading-[1.7]">
+        <div className="flex items-center justify-between mb-3 font-sans text-[10px] uppercase tracking-[0.22em] text-paper-cream/60">
+          <span>devtools · console</span>
+          <span>{artifacts ? 'live' : 'idle'}</span>
+        </div>
+        {lines.map(([sigil, txt], i) => (
+          <div key={i} className="flex items-baseline gap-3">
+            <span className={`w-3 ${sigil === '>' ? 'text-accent' : 'text-paper-cream/40'}`}>
+              {sigil}
+            </span>
+            <span
+              className={
+                sigil === '>'
+                  ? 'text-paper-cream break-all'
+                  : 'text-paper-cream/70 break-all'
+              }
+            >
+              {txt}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {globals.map(([name, desc]) => (
+          <div key={name} className="border border-ink/30 p-3 bg-paper">
+            <div className="font-mono text-[12px] text-ink break-all">{name}</div>
+            <div className="mt-1 font-serif italic text-[12px] text-ink/55 leading-snug">
+              {desc}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

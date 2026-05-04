@@ -1,0 +1,46 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e39]:
+    - generic [ref=e40]:
+      - paragraph [ref=e41]: Game 04 · Headline Rewrite
+      - generic [ref=e42]:
+        - button "♪ Off" [ref=e43] [cursor=pointer]
+        - generic [ref=e45]:
+          - text: "1"
+          - generic [ref=e46]: / 10
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - generic [ref=e61]: You
+        - generic [ref=e62]: "0"
+      - generic [ref=e63]: vs.
+      - generic [ref=e64]:
+        - generic [ref=e65]: TheBiasGraph v2
+        - generic [ref=e66]: "0"
+  - main [ref=e67]:
+    - generic [ref=e68]:
+      - article [ref=e69]:
+        - paragraph [ref=e70]: Original headline · bias 0.86 · Breitbart
+        - heading "Trump rallies fired-up base as crowd erupts over patriotic agenda" [level=2] [ref=e71]
+        - paragraph [ref=e72]: Thousands of energized supporters cheered the former president Saturday as he laid out an America First agenda the establishment refuses to embrace.
+      - generic [ref=e73]:
+        - generic [ref=e74]: Your neutral rewrite
+        - textbox "Same facts, no loaded language…" [ref=e75]
+        - paragraph [ref=e76]: 0 chars · 0 words
+      - generic [ref=e77]:
+        - link "← Quit session" [ref=e78] [cursor=pointer]:
+          - /url: /play
+        - button "File rewrite" [disabled] [ref=e79]:
+          - text: File rewrite
+          - generic [ref=e80]: →

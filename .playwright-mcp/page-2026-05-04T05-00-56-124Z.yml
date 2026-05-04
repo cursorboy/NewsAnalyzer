@@ -1,0 +1,106 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "NeuralBias" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - button "NeuralBias v2 · 10,000hr" [ref=e11] [cursor=pointer]:
+        - generic [ref=e15]: NeuralBias v2
+        - generic [ref=e16]: ·
+        - generic [ref=e17]: 10,000hr
+  - main [ref=e18]:
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]: Vol. II
+        - generic [ref=e23]: No. v2.0.0
+        - generic [ref=e25]: A reading instrument for the comparison bias of news.
+      - generic [ref=e26]:
+        - generic [ref=e27]: The model issue
+        - heading "Custom neural network trained on comparison bias." [level=1] [ref=e28]:
+          - text: Custom neural network trained on
+          - text: comparison bias.
+        - paragraph [ref=e29]: 10,000+ hours of content. Every article scored across eight dimensions — from loaded language to the skew between a headline and the body beneath it.
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - generic [ref=e33]: Training corpus
+        - generic [ref=e34]: 10,247
+        - generic [ref=e35]: Hours of content
+      - generic [ref=e36]:
+        - generic [ref=e37]: Cross-referenced pairs
+        - generic [ref=e38]: 1.2M
+        - generic [ref=e39]: Articles compared
+      - generic [ref=e40]:
+        - generic [ref=e41]: Per-article scoring
+        - generic [ref=e42]: "8"
+        - generic [ref=e43]: Bias dimensions
+      - generic [ref=e44]:
+        - generic [ref=e45]: Reviewer concordance
+        - generic [ref=e46]: 94%
+        - generic [ref=e47]: Human agreement
+    - generic [ref=e49]:
+      - generic [ref=e50]:
+        - generic [ref=e51]: Section A
+        - generic [ref=e53]: Search the wire
+      - heading "What story would you like to read across the spectrum?" [level=2] [ref=e54]
+      - generic [ref=e55]:
+        - generic [ref=e56]:
+          - generic [ref=e57]: Query
+          - textbox "e.g. federal interest rate decision" [ref=e58]
+          - button "Search →" [ref=e59] [cursor=pointer]
+        - paragraph [ref=e60]: Returns Spectrum and Columns views · cached per query
+    - generic [ref=e61]:
+      - generic [ref=e63]: Inside this issue
+      - generic [ref=e65]:
+        - link "I Search the news Query a topic and read the same story across the spectrum, scored sentence by sentence. Search the wire →" [ref=e66] [cursor=pointer]:
+          - /url: /search
+          - generic [ref=e67]: I
+          - heading "Search the news" [level=3] [ref=e68]
+          - paragraph [ref=e69]: Query a topic and read the same story across the spectrum, scored sentence by sentence.
+          - generic [ref=e70]:
+            - text: Search the wire
+            - generic [ref=e71]: →
+        - link "II Analyze your own article Paste a URL or full body. The network returns bias dimensions, loaded phrases, and an inference receipt. Run an analysis →" [ref=e72] [cursor=pointer]:
+          - /url: /analyze
+          - generic [ref=e73]: II
+          - heading "Analyze your own article" [level=3] [ref=e74]
+          - paragraph [ref=e75]: Paste a URL or full body. The network returns bias dimensions, loaded phrases, and an inference receipt.
+          - generic [ref=e76]:
+            - text: Run an analysis
+            - generic [ref=e77]: →
+        - link "III Play the network Four game modes. Beat NeuralBias v2 across ten rounds of detection, sourcing, and rewriting. Enter the play hub →" [ref=e78] [cursor=pointer]:
+          - /url: /play
+          - generic [ref=e79]: III
+          - heading "Play the network" [level=3] [ref=e80]
+          - paragraph [ref=e81]: Four game modes. Beat NeuralBias v2 across ten rounds of detection, sourcing, and rewriting.
+          - generic [ref=e82]:
+            - text: Enter the play hub
+            - generic [ref=e83]: →
+    - generic [ref=e85]:
+      - generic [ref=e87]: Methodology
+      - paragraph [ref=e89]:
+        - text: I built NeuralBias because outlet labels stop short of the sentence. It is a custom neural network trained on comparison bias across more than 10,000 hours of news content — every article is scored across
+        - generic [ref=e90]: 8 dimensions
+        - text: including loaded language, source diversity, and the skew between a headline and the body beneath it. The point is not to declare a verdict; it is to make the rhetorical machinery legible. You can search the wire, paste your own article, or play the network at its own game.
+      - paragraph [ref=e91]:
+        - link "Want to see how I built it → Let’s chat" [ref=e92] [cursor=pointer]:
+          - /url: https://linkedin.com/in/REPLACE_ME
+          - generic [ref=e93]: Want to see how I built it
+          - generic [ref=e94]: → Let’s chat
+  - contentinfo [ref=e95]:
+    - generic [ref=e96]:
+      - generic [ref=e97]:
+        - generic [ref=e98]: NeuralBias
+        - generic [ref=e99]: ·
+        - generic [ref=e100]: NeuralBias v2
+        - generic [ref=e101]: ·
+        - generic [ref=e102]: v2.0.0
+      - generic [ref=e103]:
+        - link "API status" [ref=e104] [cursor=pointer]:
+          - /url: /api-status
+        - link "Analyze" [ref=e105] [cursor=pointer]:
+          - /url: /analyze
+        - link "Play" [ref=e106] [cursor=pointer]:
+          - /url: /play
+        - generic [ref=e107]: ©
+        - generic [ref=e108]: "2026"

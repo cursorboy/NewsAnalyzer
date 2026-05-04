@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TheBiasGraph — Landing Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          serif: ['"Source Serif 4"', 'Georgia', 'serif'],
+          display: ['"Playfair Display"', 'Georgia', 'serif'],
+          sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+        },
+        colors: {
+          ink: '#111111',
+          paper: '#FAFAF7',
+          'paper-cream': '#F4EDDF',
+          'paper-warm': '#EFE6D2',
+          accent: '#B91C1C',
+        },
+        letterSpacing: { 'mega-tight': '-0.045em' },
+      },
+    },
+  };
+</script>
+<style>
+  html, body { background: #2a2724; }
+  body { font-family: 'Source Serif 4', Georgia, serif; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="shared.jsx"></script>
+<script type="text/babel" src="spectrum.jsx"></script>
+<script type="text/babel" src="diagrams.jsx"></script>
+<script type="text/babel" src="methodology-preview.jsx"></script>
+<script type="text/babel" src="inference-lab.jsx"></script>
+<script type="text/babel" src="direction-e.jsx"></script>
+
+<script type="text/babel">
+  function App() {
+    return (
+      <DesignCanvas title="TheBiasGraph · Landing & Methodology" subtitle="Search-spectrum hero · single-article paste secondary · methodology preview with diagrams">
+        <DCSection id="landing" title="Landing — search a topic, see every angle">
+          <DCArtboard id="dir-e" label="E — Editorial, restrained" width={1280} height={2200} description="Centered broadsheet masthead. Asymmetric layout below the fold.">
+            <div data-screen-label="E · Editorial restrained"><DirectionE_Landing /></div>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="methodology" title="/how-i-built-this — methodology page with diagrams">
+          <DCArtboard id="method" label="Methodology preview" width={1280} height={3000} description="Sections II, IV, V, VI, VII rendered with their figures: dataset funnel, architecture diagram, loss equation, training loss curve, eval table, attention rollout.">
+            <div data-screen-label="Methodology · preview"><MethodologyPreview /></div>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="lab" title="/inference-lab — a real transformer in the browser">
+          <DCArtboard id="lab" label="Inference Lab" width={1280} height={3100} description="Lab notebook: model card, load log, tokenizer, forward pass with attention + logits, attention rollout saliency, SHA-256 hashes, devtools globals.">
+            <div data-screen-label="Inference Lab"><InferenceLabPage /></div>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

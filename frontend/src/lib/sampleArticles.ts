@@ -1,0 +1,156 @@
+export type ArticleMarker = {
+  src: string
+  short: string
+  x: number
+  y: number
+  title: string
+  why?: string
+  score?: number
+}
+
+export const SAMPLE_ARTICLES: ArticleMarker[] = [
+  {
+    src: 'Jacobin',
+    short: 'JCB',
+    x: -0.92,
+    y: 0.38,
+    title: 'Wall Street feasts as student debtors are forced back into payment',
+    why: 'Loaded verbs around "feasts"; emphasis on class-conflict framing.',
+  },
+  {
+    src: 'The Nation',
+    short: 'NTN',
+    x: -0.81,
+    y: 0.62,
+    title: 'The cruelty of Republican student-loan repayment',
+    why: 'Moral framing in the headline; "cruelty" stacks affect weight.',
+  },
+  {
+    src: 'MSNBC',
+    short: 'MSN',
+    x: -0.74,
+    y: 0.20,
+    title: 'GOP plan would devastate borrowers, advocates warn',
+    why: 'Sources skew toward advocacy; "devastate" is high-arousal lexicon.',
+  },
+  {
+    src: 'HuffPost',
+    short: 'HUF',
+    x: -0.66,
+    y: 0.74,
+    title: 'Loan forgiveness in jeopardy under House proposal',
+    why: 'Presupposition that forgiveness is the baseline being threatened.',
+  },
+  {
+    src: 'Vox',
+    short: 'VOX',
+    x: -0.58,
+    y: 0.28,
+    title: 'What the new repayment rules actually mean',
+    why: 'Explainer register, but framing centers borrower impact.',
+  },
+  {
+    src: 'NYT',
+    short: 'NYT',
+    x: -0.34,
+    y: 0.52,
+    title: 'House bill tightens income-driven repayment terms',
+    why: '"Tightens" carries mild negative valence relative to neutral baseline.',
+  },
+  {
+    src: 'Washington Post',
+    short: 'WAP',
+    x: -0.22,
+    y: 0.18,
+    title: 'Repayment overhaul advances in the House',
+    why: 'Procedural verb; light framing tilts slightly toward affected groups.',
+  },
+  {
+    src: 'NPR',
+    short: 'NPR',
+    x: -0.10,
+    y: 0.66,
+    title: 'New rules for federal student loans take shape',
+    why: 'Near-neutral phrasing; sourcing balanced across both parties.',
+  },
+  {
+    src: 'Reuters',
+    short: 'RTR',
+    x: 0.02,
+    y: 0.34,
+    title: 'House passes student-loan repayment overhaul',
+    why: 'Wire-style declarative headline; minimal evaluative lexicon.',
+  },
+  {
+    src: 'AP',
+    short: 'AP',
+    x: 0.05,
+    y: 0.80,
+    title: 'Republicans pass student loan repayment changes',
+    why: 'Agent-first construction; descriptive nouns over judgment terms.',
+  },
+  {
+    src: 'Bloomberg',
+    short: 'BBG',
+    x: 0.18,
+    y: 0.22,
+    title: 'Repayment overhaul: what borrowers should know',
+    why: 'Service framing; subtly emphasizes fiscal-responsibility cues.',
+  },
+  {
+    src: 'WSJ',
+    short: 'WSJ',
+    x: 0.34,
+    y: 0.56,
+    title: 'Student-loan reform restores fiscal discipline',
+    why: '"Restores" presupposes prior loss of discipline; positive valence.',
+  },
+  {
+    src: 'The Hill',
+    short: 'THL',
+    x: 0.42,
+    y: 0.30,
+    title: 'Conservatives cheer repayment-rules overhaul',
+    why: 'Source choice and "cheer" tag tilt the report toward the right.',
+  },
+  {
+    src: 'NY Post',
+    short: 'NYP',
+    x: 0.61,
+    y: 0.74,
+    title: 'Finally, an end to the student-loan giveaway',
+    why: '"Finally" + "giveaway" stack rhetorical and lexical loading.',
+  },
+  {
+    src: 'National Review',
+    short: 'NRO',
+    x: 0.68,
+    y: 0.40,
+    title: 'Returning student loans to the realm of personal responsibility',
+    why: 'Moral-frame keywords; emphasis on individual over collective duty.',
+  },
+  {
+    src: 'Fox News',
+    short: 'FOX',
+    x: 0.78,
+    y: 0.18,
+    title: 'House Republicans rein in runaway loan forgiveness',
+    why: '"Runaway" presupposes excess; agent framed as restorer of order.',
+  },
+  {
+    src: 'The Federalist',
+    short: 'FED',
+    x: 0.86,
+    y: 0.62,
+    title: 'The free ride is finally over for student-loan freeloaders',
+    why: 'Out-group labeling and pejoratives; high loaded-language score.',
+  },
+  {
+    src: 'Daily Wire',
+    short: 'DW',
+    x: 0.91,
+    y: 0.46,
+    title: 'Republicans dismantle Biden-era loan handout',
+    why: '"Dismantle" + "handout" combine to maximize partisan framing.',
+  },
+]

@@ -1,172 +1,225 @@
 import type { Article } from '../lib'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import SpectrumGraph from './SpectrumGraph'
+import type { ArticleMarker } from '../lib/sampleArticles'
+
+function outletCode(source: string): string {
+  const cleaned = source.replace(/[^a-zA-Z ]/g, '').trim()
+  if (!cleaned) return 'OUT'
+  const parts = cleaned.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0] + (parts[2]?.[0] ?? parts[1][1] ?? '')).toUpperCase().slice(0, 3)
+  }
+  return cleaned.slice(0, 3).toUpperCase()
+}
+
+function fallbackWhy(a: Article, idx: number): string {
+  if (a.reasoning && a.reasoning.trim()) {
+    return a.reasoning.split('\n')[0].slice(0, 180)
+  }
+  const dist = Math.abs(a.spectrum_score)
+  const dir = a.spectrum_score < 0 ? 'left' : a.spectrum_score > 0 ? 'right' : 'center'
+  return `Loaded language density and economic framing place this clipping ${idx} steps from center, leaning ${dir} (${dist.toFixed(2)}).`
+}
+
+function articlesToMarkers(arts: Article[]): ArticleMarker[] {
+  return arts.map((a, i) => ({
+    src: a.source,
+    short: outletCode(a.source),
+    x: Math.max(-1, Math.min(1, a.spectrum_score)),
+    y: 0.18 + ((i * 0.137) % 0.7),
+    title: a.title,
+    why: fallbackWhy(a, i + 1),
+    score: a.spectrum_score,
+  }))
+}
 
 export function Spectrum({ articles }: { articles: Article[] }) {
-  const [selectedArticle, setSelectedArticle] = useState<string | null>(null)
-  const hasSelection = selectedArticle !== null
-  return (
-    <div className="relative w-full h-full min-h-[calc(100vh-80px)] overflow-hidden">
-      {/* Blue (Liberal) on the left, Red (Conservative) on the right */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-gray-100 to-red-500" />
-      <div className="absolute inset-0 pointer-events-none select-none">
-        <div className="absolute left-2 top-2 bg-white/90 text-xs px-2 py-1 rounded">Liberal</div>
-        <div className="absolute right-2 top-2 bg-white/90 text-xs px-2 py-1 rounded">Conservative</div>
-        <div className="absolute left-2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Liberal</div>
-        <div className="absolute right-2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Conservative</div>
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-2 bg-white/90 text-xs px-2 py-1 rounded">Neutral</div>
-        
-        {/* Instructions */}
-        {!hasSelection && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/80 text-white px-4 py-2 rounded-lg text-sm text-center pointer-events-none">
-            💡 Click on any article to focus and read its AI analysis
-          </div>
-        )}
+  const [searchParams] = useSearchParams()
+  const topic = searchParams.get('q') || ''
+  const [selected, setSelected] = useState<string | null>(null)
+  const hasSelection = selected !== null
+
+  const stats = useMemo(() => {
+    if (articles.length === 0) {
+      return { avg: 0, sources: 0, count: 0, spread: 0 }
+    }
+    const xs = articles.map((a) => a.spectrum_score)
+    const sources = new Set(articles.map((a) => a.source)).size
+    return {
+      avg: xs.reduce((s, x) => s + x, 0) / xs.length,
+      sources,
+      count: articles.length,
+      spread: Math.max(...xs) - Math.min(...xs),
+    }
+  }, [articles])
+
+  const markers = useMemo(() => articlesToMarkers(articles), [articles])
+
+  if (articles.length === 0) {
+    return (
+      <div className="mx-auto max-w-3xl px-6 py-24 text-center font-serif text-ink/60">
+        <p className="text-lg italic">No clippings filed for this topic.</p>
+        <p className="mt-2 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/40">
+          Try a different search term
+        </p>
       </div>
-      
-      {articles.length === 0 ? (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-white/90 rounded-lg p-6 text-center">
-            <p className="text-gray-600">No articles found for this search.</p>
-            <p className="text-sm text-gray-500 mt-2">Try a different search term or check back later.</p>
-          </div>
+    )
+  }
+
+  return (
+    <div className="bg-paper-cream">
+      <div className="mx-auto w-full max-w-[1280px] px-12 pt-10 pb-4">
+        <StatStrip stats={stats} />
+      </div>
+
+      <div className="mx-auto w-full max-w-[1280px] px-12">
+        <div className="border-t-2 border-b border-ink py-10">
+          <SpectrumGraph
+            key={topic || 'all'}
+            query={topic || 'this topic'}
+            articles={markers}
+            height={420}
+          />
         </div>
-      ) : (
-        <div className="absolute inset-0">
-          <div className="relative w-full h-full" id="spectrum-stage">
-            <div className="w-full h-full relative">
-              {articles.map((a, index) => (
-                <PositionedCard 
-                  key={a.url || index} 
-                  article={a} 
-                  index={index}
-                  isSelected={selectedArticle === a.url}
-                  hasSelection={hasSelection}
-                  onSelect={() => setSelectedArticle(selectedArticle === a.url ? null : a.url)}
-                />
-              ))}
-            </div>
-            
-            {/* Clear selection button */}
-            {selectedArticle && (
-              <button
-                onClick={() => setSelectedArticle(null)}
-                className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/80 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-black/90 transition-colors z-10"
-              >
-                Clear Selection
-              </button>
-            )}
-          </div>
+      </div>
+
+      <div className="mx-auto w-full max-w-[1280px] px-12 pt-12 pb-20">
+        <div className="flex items-baseline justify-between border-b border-ink/30 pb-3">
+          <span className="font-sans text-[11px] uppercase tracking-[0.22em] text-ink/65">
+            On the Spectrum &mdash; {stats.count} clippings
+          </span>
+          <span className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/45">
+            {stats.sources} unique outlets
+          </span>
         </div>
-      )}
+
+        <div className="mt-10 grid gap-x-10 gap-y-12 md:grid-cols-2 lg:grid-cols-3">
+          {articles.map((a, idx) => (
+            <Clipping
+              key={a.url || idx}
+              article={a}
+              index={idx + 1}
+              isSelected={selected === a.url}
+              dim={hasSelection && selected !== a.url}
+              onSelect={() => setSelected(selected === a.url ? null : a.url)}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
 
-function PositionedCard({ 
-  article, 
-  index, 
-  isSelected, 
-  hasSelection,
-  onSelect 
-}: { 
-  article: Article; 
-  index: number;
-  isSelected: boolean;
-  hasSelection: boolean;
-  onSelect: () => void;
+function StatStrip({
+  stats,
+}: {
+  stats: { avg: number; sources: number; count: number; spread: number }
 }) {
-  // Convert spectrum score (-1 to 1) to percentage (0% to 100%)
-  const leftPercent = ((article.spectrum_score + 1) / 2) * 100
-  
-  // Group articles by bias ranges to better distribute them
-  const biasRange = Math.abs(article.spectrum_score) < 0.3 ? 'center' : 
-                   article.spectrum_score < 0 ? 'left' : 'right'
-  
-  // Better vertical distribution based on bias range and index
-  let rowIndex, topPercent, jitterX
-  
-  if (biasRange === 'center') {
-    // Center articles: use more vertical space and larger jitter
-    rowIndex = index % 6  // 6 rows for center articles
-    topPercent = 10 + rowIndex * 13  // Tighter vertical spacing
-    jitterX = (index % 7 - 3) * 25  // Larger horizontal spread
-  } else {
-    // Left/Right articles: standard distribution
-    rowIndex = index % 5  // 5 rows for partisan articles  
-    topPercent = 12 + rowIndex * 15 + (index % 3) * 3  // Varied spacing
-    jitterX = (index % 4 - 1.5) * 15  // Moderate horizontal jitter
+  function fmtSigned(n: number) {
+    const sign = n < 0 ? '−' : n > 0 ? '+' : ''
+    return `${sign}${Math.abs(n).toFixed(2)}`
   }
-  
-  // Additional offset based on total index to prevent systematic overlaps
-  const globalOffset = (index * 7) % 20 - 10  // -10 to +10 variation
-  
+  const items = [
+    { label: 'Avg bias', value: fmtSigned(stats.avg) },
+    { label: 'Spread', value: stats.spread.toFixed(2) },
+    { label: 'Outlets', value: String(stats.sources) },
+  ]
   return (
-    <motion.div
-      className="absolute"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ 
-        opacity: hasSelection ? (isSelected ? 1 : 0.3) : 1, 
-        y: 0,
-        scale: isSelected ? 1.05 : 1,
-        zIndex: isSelected ? 50 : 1
-      }}
-      transition={{ type: 'spring', stiffness: 120, damping: 16, delay: index * 0.1 }}
-      style={{ 
-        left: `calc(${leftPercent}% - 140px + ${jitterX + globalOffset}px)`, 
-        top: `${topPercent}%`,
-        maxWidth: '280px'
-      }}
-    >
-      <div
-        onClick={(e) => {
-          e.preventDefault()
-          onSelect()
-        }}
-        className={`w-[280px] border rounded-lg shadow-sm p-4 transition-all cursor-pointer ${
-          isSelected 
-            ? 'bg-white border-blue-500 shadow-xl ring-4 ring-blue-200/50 min-h-[200px]' 
-            : 'bg-white/95 hover:shadow-md hover:bg-white border-gray-200'
-        }`}
-        style={{ borderColor: isSelected ? '#3b82f6' : 'rgba(0,0,0,0.08)' }}
-      >
-        {/* Read article link - at the top when selected */}
-        {isSelected && (
-          <div className="mb-3">
-            <a
-              href={article.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-block bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              📖 Read Article
-            </a>
-          </div>
-        )}
-        
-        <div className="text-xs text-gray-500 mb-2 flex justify-between">
-          <span>{article.source}</span>
-          <span className="text-xs bg-gray-100 px-1 rounded">
-            {article.spectrum_score > 0 ? '+' : ''}{article.spectrum_score.toFixed(2)}
-          </span>
+    <dl className="flex items-baseline gap-10 border-t border-b border-ink/30 py-4">
+      {items.map((it) => (
+        <div key={it.label} className="flex items-baseline gap-2">
+          <dd className="font-display text-3xl font-black tabular-nums leading-none text-ink">
+            {it.value}
+          </dd>
+          <dt className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+            {it.label}
+          </dt>
         </div>
-        <div className="text-sm font-medium mb-2 leading-snug">{article.title}</div>
-        <div className="text-xs text-gray-600 line-clamp-3">{article.snippet}</div>
-        <div className="mt-2 text-xs text-gray-400">
-          {article.method} • {Math.round(article.confidence * 100)}% confidence
-        </div>
-        {article.reasoning && (
-          <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border-l-2 border-blue-200">
-            <div className="font-medium text-blue-700 mb-1">AI Analysis:</div>
-            <div className={isSelected ? 'line-clamp-4' : 'line-clamp-2'}>
-              {/* Limit to first paragraph or 200 characters */}
-              {article.reasoning.split('\n')[0].substring(0, 200)}
-              {article.reasoning.length > 200 ? '...' : ''}
-            </div>
-          </div>
-        )}
-      </div>
-    </motion.div>
+      ))}
+    </dl>
   )
-} 
+}
+
+function Clipping({
+  article,
+  index,
+  isSelected,
+  dim,
+  onSelect,
+}: {
+  article: Article
+  index: number
+  isSelected: boolean
+  dim: boolean
+  onSelect: () => void
+}) {
+  const score = article.spectrum_score
+  const sign = score > 0 ? '+' : score < 0 ? '−' : ''
+  const num = String(index).padStart(2, '0')
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: dim ? 0.4 : 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="group cursor-pointer"
+      onClick={onSelect}
+    >
+      <div className={isSelected ? 'h-[3px] bg-ink' : 'h-px bg-ink/35'} aria-hidden />
+
+      <header className="flex items-baseline justify-between gap-3 pt-3">
+        <div className="flex items-baseline gap-3 font-sans text-[11px] uppercase tracking-[0.22em] text-ink/65">
+          <span className="font-mono tabular-nums text-ink/40">N° {num}</span>
+          <span>{article.source}</span>
+        </div>
+        <span className="inline-flex items-center border border-ink px-1.5 py-[1px] font-display font-black text-[12px] tabular-nums leading-none text-ink">
+          {sign}
+          {Math.abs(score).toFixed(2)}
+        </span>
+      </header>
+
+      <h3 className="mt-3 font-serif text-[20px] leading-[1.2] text-ink group-hover:text-accent transition-colors md:text-[22px]">
+        {article.title}
+      </h3>
+
+      <p className="mt-2 font-serif italic text-[14px] leading-snug text-ink/70 line-clamp-3 md:text-[15px]">
+        {article.snippet}
+      </p>
+
+      <footer className="mt-3 flex items-center justify-between font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
+        <span>{article.method} · {Math.round(article.confidence * 100)}% conf.</span>
+        <div className="flex items-center gap-4">
+          <Link
+            to={`/article/${article.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="underline decoration-ink/30 underline-offset-4 hover:decoration-ink hover:text-ink"
+          >
+            Analyze &rarr;
+          </Link>
+          <a
+            href={article.url}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="underline decoration-ink/30 underline-offset-4 hover:decoration-ink hover:text-ink"
+          >
+            Original ↗
+          </a>
+        </div>
+      </footer>
+
+      {isSelected && article.reasoning && (
+        <div className="mt-3 border-l-[3px] border-ink pl-4 font-serif text-[13px] leading-relaxed text-ink/85">
+          <span className="block font-sans text-[9px] uppercase tracking-[0.22em] text-ink/55 mb-1">
+            Network reasoning
+          </span>
+          <p className="italic">{article.reasoning.split('\n')[0]}</p>
+        </div>
+      )}
+    </motion.article>
+  )
+}
+
+export default Spectrum

@@ -1,0 +1,35 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]: Query
+        - textbox "Search the news" [ref=e24]: climate
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: View
+          - button "Spectrum" [ref=e28] [cursor=pointer]
+          - button "Columns" [ref=e29] [cursor=pointer]
+        - link "Play with this query →" [ref=e30] [cursor=pointer]:
+          - /url: /play?q=climate
+    - generic [ref=e31]:
+      - text: Showing analysis for
+      - generic [ref=e32]: "\"climate\""
+  - main [ref=e33]:
+    - generic [ref=e35]:
+      - img "Neural network inference" [ref=e36]
+      - generic [ref=e123]:
+        - generic [ref=e124]: TheBiasGraph v2 inference
+        - generic [ref=e125]: Cross-referencing 10,000hr corpus

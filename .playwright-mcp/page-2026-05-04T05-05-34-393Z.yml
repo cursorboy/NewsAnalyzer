@@ -1,0 +1,35 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "NeuralBias" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - button "NeuralBias v2 · 10,000hr" [ref=e11] [cursor=pointer]:
+        - generic [ref=e15]: NeuralBias v2
+        - generic [ref=e16]: ·
+        - generic [ref=e17]: 10,000hr
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]: Section B
+        - generic [ref=e22]: The lab
+      - generic [ref=e24]:
+        - heading "Analyze any article." [level=1] [ref=e25]
+        - paragraph [ref=e26]: Paste a body of text or hand the network a URL. NeuralBias v2 returns bias dimensions, loaded phrases, and a full inference receipt.
+    - generic [ref=e27]:
+      - generic [ref=e28]: Input
+      - generic [ref=e29]:
+        - tablist "Input mode" [ref=e30]:
+          - tab "Paste text" [ref=e31] [cursor=pointer]
+          - tab "From URL" [active] [selected] [ref=e32] [cursor=pointer]
+          - generic [ref=e33]: Server-side extraction
+        - generic [ref=e44]:
+          - generic [ref=e45]:
+            - generic [ref=e46]: Article URL
+            - textbox "Article URL" [ref=e47]:
+              - /placeholder: https://www.example.com/news/story
+          - paragraph [ref=e48]: The server fetches the page, extracts the article body, and runs the same inference pipeline as paste-text.
+        - generic [ref=e41]:
+          - button "Run analysis →" [ref=e42] [cursor=pointer]
+          - generic [ref=e43]: 8 dimensions · live inference · receipt included

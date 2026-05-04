@@ -1,0 +1,46 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "NeuralBias" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - button "NeuralBias v2 · 10,000hr" [ref=e11] [cursor=pointer]:
+        - generic [ref=e15]: NeuralBias v2
+        - generic [ref=e16]: ·
+        - generic [ref=e17]: 10,000hr
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - paragraph [ref=e20]: Section E · Operations
+      - heading "API status" [level=1] [ref=e21]
+      - paragraph [ref=e22]: Live health of the Google Custom Search backend powering the wire.
+      - generic [ref=e23]:
+        - button "Refresh" [ref=e24] [cursor=pointer]
+        - link "← Back to front page" [ref=e25] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e26]: Auto-refresh · 30s
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - paragraph [ref=e29]: API configured
+        - paragraph [ref=e30]: "No"
+      - generic [ref=e31]:
+        - paragraph [ref=e32]: Total requests
+        - paragraph [ref=e33]: "0"
+      - generic [ref=e34]:
+        - paragraph [ref=e35]: Failed requests
+        - paragraph [ref=e36]: "0"
+      - generic [ref=e37]:
+        - paragraph [ref=e38]: Success rate
+        - paragraph [ref=e39]: 0.0%
+      - generic [ref=e40]:
+        - paragraph [ref=e41]: Rate limited
+        - paragraph [ref=e42]: "No"
+      - generic [ref=e43]:
+        - paragraph [ref=e44]: Quota exceeded
+        - paragraph [ref=e45]: "No"
+    - generic [ref=e46]:
+      - generic [ref=e47]: External consoles
+      - link "Google quotas ↗" [ref=e48] [cursor=pointer]:
+        - /url: https://console.cloud.google.com/apis/api/customsearch.googleapis.com/quotas
+      - link "API metrics ↗" [ref=e49] [cursor=pointer]:
+        - /url: https://console.cloud.google.com/apis/api/customsearch.googleapis.com/metrics

@@ -1,0 +1,70 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "NeuralBias" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - button "NeuralBias v2 · 10,000hr" [ref=e11] [cursor=pointer]:
+        - generic [ref=e15]: NeuralBias v2
+        - generic [ref=e16]: ·
+        - generic [ref=e17]: 10,000hr
+  - main [ref=e18]:
+    - generic [ref=e19]:
+      - paragraph [ref=e20]: Section D · The Puzzle Page
+      - heading "The newsroom puzzle page." [level=1] [ref=e21]:
+        - text: The newsroom
+        - text: puzzle page.
+      - paragraph [ref=e22]: Four ways to test your eye against the network.
+      - generic [ref=e25]: "Each session: 10 rounds · User vs. NeuralBias v2"
+    - generic [ref=e26]:
+      - link "Game 01 Best 0 Bias Detective Drag each headline to the spot on the political spectrum where you think it lands. Score on accuracy. Ten rounds. One spectrum. Calibrate your eye. Play" [ref=e27] [cursor=pointer]:
+        - /url: /play/detective
+        - generic [ref=e28]:
+          - paragraph [ref=e29]: Game 01
+          - paragraph [ref=e30]: Best 0
+        - heading "Bias Detective" [level=2] [ref=e31]
+        - paragraph [ref=e32]: Drag each headline to the spot on the political spectrum where you think it lands. Score on accuracy.
+        - paragraph [ref=e33]: Ten rounds. One spectrum. Calibrate your eye.
+        - generic [ref=e34]:
+          - generic [ref=e35]: Play
+          - generic [ref=e36]: →
+      - link "Game 02 Best 0 Guess the Source Read a clipping with the masthead removed. Pick the outlet that filed it from four candidates. Ten rounds. Four suspects per round. Streak bonus active. Play" [ref=e37] [cursor=pointer]:
+        - /url: /play/source
+        - generic [ref=e38]:
+          - paragraph [ref=e39]: Game 02
+          - paragraph [ref=e40]: Best 0
+        - heading "Guess the Source" [level=2] [ref=e41]
+        - paragraph [ref=e42]: Read a clipping with the masthead removed. Pick the outlet that filed it from four candidates.
+        - paragraph [ref=e43]: Ten rounds. Four suspects per round. Streak bonus active.
+        - generic [ref=e44]:
+          - generic [ref=e45]: Play
+          - generic [ref=e46]: →
+      - link "Game 03 Best 0 Compare Two Takes Two articles, same story, different rooms. Decide which is more biased and in which direction. Ten rounds. Two scores per round — magnitude and direction. Play" [ref=e47] [cursor=pointer]:
+        - /url: /play/compare
+        - generic [ref=e48]:
+          - paragraph [ref=e49]: Game 03
+          - paragraph [ref=e50]: Best 0
+        - heading "Compare Two Takes" [level=2] [ref=e51]
+        - paragraph [ref=e52]: Two articles, same story, different rooms. Decide which is more biased and in which direction.
+        - paragraph [ref=e53]: Ten rounds. Two scores per round — magnitude and direction.
+        - generic [ref=e54]:
+          - generic [ref=e55]: Play
+          - generic [ref=e56]: →
+      - link "Game 04 Best 0 Headline Rewrite Take a loaded headline and file a neutral version. The network grades you on tone, distance, and signal. Ten rounds. Multi-signal score. Brevity counts. Play" [ref=e57] [cursor=pointer]:
+        - /url: /play/rewrite
+        - generic [ref=e58]:
+          - paragraph [ref=e59]: Game 04
+          - paragraph [ref=e60]: Best 0
+        - heading "Headline Rewrite" [level=2] [ref=e61]
+        - paragraph [ref=e62]: Take a loaded headline and file a neutral version. The network grades you on tone, distance, and signal.
+        - paragraph [ref=e63]: Ten rounds. Multi-signal score. Brevity counts.
+        - generic [ref=e64]:
+          - generic [ref=e65]: Play
+          - generic [ref=e66]: →
+    - generic [ref=e67]:
+      - link "Back to the front page" [ref=e68] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e69]: ←
+        - generic [ref=e70]: Back to the front page
+      - generic [ref=e71]: Best scores stored locally

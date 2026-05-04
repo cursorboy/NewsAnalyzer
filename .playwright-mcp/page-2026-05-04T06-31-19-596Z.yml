@@ -1,0 +1,49 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "TheBiasGraph" [ref=e7] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e8]: Sunday, May 3, 2026
+      - generic [ref=e9]:
+        - link "Analyze →" [ref=e10] [cursor=pointer]:
+          - /url: /analyze
+        - button "TheBiasGraph v2 · 10,000hr" [ref=e12] [cursor=pointer]:
+          - generic [ref=e16]: TheBiasGraph v2
+          - generic [ref=e17]: ·
+          - generic [ref=e18]: 10,000hr
+  - generic [ref=e39]:
+    - generic [ref=e40]:
+      - paragraph [ref=e42]: Game 01 · Bias Detective
+      - generic [ref=e43]:
+        - button "Unmute" [ref=e44] [cursor=pointer]: ♪ Off
+        - generic [ref=e46]:
+          - text: "1"
+          - generic [ref=e47]: / 10
+    - generic [ref=e60]:
+      - generic [ref=e61]:
+        - generic [ref=e62]: You
+        - generic [ref=e63]: "0"
+      - generic [ref=e64]: vs.
+      - generic [ref=e65]:
+        - generic [ref=e66]: TheBiasGraph v2
+        - generic [ref=e67]: "0"
+  - main [ref=e68]:
+    - generic [ref=e69]:
+      - article [ref=e70]:
+        - paragraph [ref=e71]: Clipping
+        - heading "Climate alarmism falters as new data undercuts doomsday models" [level=2] [ref=e72]
+        - paragraph [ref=e73]: A growing body of analysis suggests the most apocalyptic climate forecasts are wildly overstated, according to skeptics who say the science has been politicized.
+        - paragraph [ref=e74]: Source withheld until reveal
+      - generic [ref=e75]:
+        - paragraph [ref=e76]: Drag the marker to where you think this clipping lives.
+        - generic [ref=e80]:
+          - generic [ref=e81]: Liberal
+          - generic [ref=e82]: Center
+          - generic [ref=e83]: Conservative
+      - generic [ref=e84]:
+        - link "← Quit session" [ref=e85] [cursor=pointer]:
+          - /url: /play
+        - button "File your guess" [disabled] [ref=e86]:
+          - text: File your guess
+          - generic [ref=e87]: →
