@@ -440,7 +440,11 @@ class handler(BaseHTTPRequestHandler):
             for i, (article_info, classification) in enumerate(zip(article_data, classifications)):
                 if isinstance(classification, Exception):
                     print(f"Debug: Classification failed for article {i}: {classification}")
-                    classification = classify_by_outlet(article_info["source"])
+                    classification = classify_by_outlet(
+                        article_info["source"],
+                        title=article_info.get("title", ""),
+                        snippet=article_info.get("snippet", ""),
+                    )
 
                 print(f"Debug: Article {i} classified - method: {classification.method}, score: {classification.score}, confidence: {classification.confidence}")
 
