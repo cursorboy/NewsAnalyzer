@@ -11,7 +11,14 @@
     }
   },
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/index" },
-    { "source": "/((?!api/|assets/|favicon).*)", "destination": "/index.html" }
+    { "source": "/api/search", "destination": "/api/index" },
+    { "source": "/api/api-status", "destination": "/api/index" },
+    { "source": "/api/analyze", "destination": "/api/index" },
+    { "source": "/api/articles", "destination": "/api/index" },
+    { "source": "/api/articles/:id", "destination": "/api/index" },
+    { "source": "/api/games/compare-pair", "destination": "/api/index" },
+    { "source": "/api/games/headline-rewrite/score", "destination": "/api/index" },
+    { "source": "/api/narratives", "destination": "/api/index" },
+    { "source": "/:path((?!api/|assets/|favicon).*)", "destination": "/index.html" }
   ]
 }
