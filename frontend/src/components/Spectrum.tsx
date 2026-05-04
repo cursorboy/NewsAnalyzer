@@ -238,6 +238,7 @@ function Clipping({
         <div className="flex items-center gap-4">
           <Link
             to={`/article/${article.id}`}
+            state={{ article }}
             onClick={(e) => e.stopPropagation()}
             className="underline decoration-ink/30 underline-offset-4 hover:decoration-ink hover:text-ink"
           >

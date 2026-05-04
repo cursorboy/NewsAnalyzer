@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { analyzeArticle, getArticleDetail } from '../lib'
-import type { ArticleDetail as Detail, LoadedPhrase } from '../lib'
+import type { Article, ArticleDetail as Detail, LoadedPhrase } from '../lib'
 import {
   Radar,
   RadarChart,
@@ -17,34 +17,75 @@ import LoadedLanguageHighlight from './LoadedLanguageHighlight'
 import NeuralLoader from './NeuralLoader'
 import PullQuote from './editorial/PullQuote'
 
+function buildSyntheticDetail(id: string, article: Article): Detail {
+  return {
+    id,
+    article,
+    bias_dimensions: {
+      factuality: 0,
+      economic: 0,
+      social: 0,
+      establishment: 0,
+      sensationalism: 0,
+      loaded_language: 0,
+      source_diversity: 0,
+      headline_body_skew: 0,
+    },
+    highlighted_phrases: [],
+    loaded_phrases: [],
+  }
+}
+
 export default function ArticleDetail() {
   const { id } = useParams()
+  const location = useLocation()
   const navigate = useNavigate()
   const [detail, setDetail] = useState<Detail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
 
+  // When the user clicks "Analyze →" from a search result, the upstream Link
+  // passes the full Article via location.state. Use it as the source of truth
+  // for headline/url/source so the page shows real metadata immediately
+  // instead of the synthesized "article_1" placeholder from /api/articles/:id.
+  const passedArticle = (location.state as { article?: Article } | null)?.article
+
   useEffect(() => {
     if (!id) return
-    setDetail(null)
     setError(null)
+
+    if (passedArticle) {
+      setDetail(buildSyntheticDetail(id, passedArticle))
+      return
+    }
+
+    setDetail(null)
     getArticleDetail(id)
       .then(setDetail)
       .catch((e) => setError(String(e)))
-  }, [id])
+  }, [id, passedArticle])
 
   async function runAnalysis() {
     if (!detail) return
+    const a = detail.article
+    if (!a.url && !a.snippet && !a.title) {
+      setError('Nothing to analyze — article is missing a URL and body.')
+      return
+    }
     setAnalyzing(true)
     setError(null)
     try {
-      const a = detail.article
       const fresh = await analyzeArticle({
         url: a.url,
         title: a.title,
         text: a.snippet,
       })
-      setDetail(fresh)
+      // Preserve the real article metadata (id, source, published_at, url) the
+      // user came in with — the analyze backend may synthesize a fresh id.
+      setDetail({
+        ...fresh,
+        article: { ...a, ...fresh.article, id: a.id, url: a.url || fresh.article.url },
+      })
     } catch (e) {
       setError(String(e))
     } finally {
