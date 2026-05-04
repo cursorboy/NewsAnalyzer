@@ -1,29 +1,56 @@
 // Inference Lab — real transformer in the browser via @xenova/transformers.
-// All numbers, shapes, logits, and attention matrices come from the actual
-// ONNX forward pass of Xenova/distilbert-base-uncased-finetuned-sst-2-english.
+// All numbers, logits, and saliency scores come from the actual ONNX forward
+// pass of valurank/distilroberta-bias (mirrored at protectai/distilroberta-
+// bias-onnx). DistilRoBERTa-base, fine-tuned on the Wiki-Neutrality Corpus
+// for sentence-level BIASED / NEUTRAL classification (Pryzant et al. 2020,
+// building on Recasens et al. 2013).
 //
 // No fabrication. If a value is shown on the page, it is read from the model
 // or computed from the model's outputs.
 
-export const MODEL_ID = 'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
+export const MODEL_ID = 'protectai/distilroberta-bias-onnx'
 export const MODEL_CARD_URL = `https://huggingface.co/${MODEL_ID}`
+export const SOURCE_MODEL_ID = 'valurank/distilroberta-bias'
+export const SOURCE_MODEL_URL = `https://huggingface.co/${SOURCE_MODEL_ID}`
+export const TRAINING_CORPUS = 'WNC · Wikipedia neutrality edits · ~180k pairs'
 export const QUANTIZED = true
 
 // transformers.js (and ONNX runtime web) lazy-imported at run time so that
 // the main bundle is not bloated by ~3 MB of WASM glue. The first call to
 // loadInferenceRuntime() resolves the module; subsequent calls reuse it.
 let _runtime: Promise<typeof import('@xenova/transformers')> | null = null
+let _fetchPatched = false
+
+// protectai/distilroberta-bias-onnx hosts its ONNX at the repo root
+// (`model_quantized.onnx`), not under `onnx/`. transformers.js v2 hardcodes
+// the `onnx/` prefix when constructing the model URL. We surgically rewrite
+// that one path at the fetch layer so we don't have to re-host 80 MB of
+// weights. The rewrite is targeted: only matches this exact model + path.
+function patchFetchForRootLevelOnnx() {
+  if (_fetchPatched || typeof window === 'undefined') return
+  _fetchPatched = true
+  const orig = window.fetch.bind(window)
+  const matcher = `/${MODEL_ID}/resolve/main/onnx/`
+  window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    let url: string
+    if (typeof input === 'string') url = input
+    else if (input instanceof URL) url = input.toString()
+    else url = (input as Request).url
+    if (url.includes(matcher)) {
+      const rewritten = url.replace('/resolve/main/onnx/', '/resolve/main/')
+      return orig(rewritten, init)
+    }
+    return orig(input as RequestInfo, init)
+  }
+}
 
 export function loadInferenceRuntime() {
   if (!_runtime) {
+    patchFetchForRootLevelOnnx()
     _runtime = import('@xenova/transformers').then((mod) => {
-      // Force remote (verifiable) model fetches from huggingface.co — never
-      // shadow files from our own server. This is part of the trust story:
-      // an ML engineer can open devtools and see the actual HF URL.
       mod.env.allowRemoteModels = true
       mod.env.allowLocalModels = false
       mod.env.useBrowserCache = true
-      // Reasonable WASM thread count without overwhelming low-power devices.
       try {
         const cores =
           (typeof navigator !== 'undefined' && (navigator as Navigator).hardwareConcurrency) || 4
@@ -211,31 +238,34 @@ export async function loadModel(
     architectures: Array.isArray(rawConfig.architectures)
       ? (rawConfig.architectures as string[])
       : ['DistilBertForSequenceClassification'],
-    modelType: String(rawConfig.model_type ?? 'distilbert'),
+    modelType: String(rawConfig.model_type ?? 'roberta'),
     numLayers: Number(rawConfig.n_layers ?? rawConfig.num_hidden_layers ?? 6),
     numHeads: Number(rawConfig.n_heads ?? rawConfig.num_attention_heads ?? 12),
     hiddenDim: Number(rawConfig.dim ?? rawConfig.hidden_size ?? 768),
     intermediateDim: Number(rawConfig.hidden_dim ?? rawConfig.intermediate_size ?? 3072),
     vocabSize: Number(rawConfig.vocab_size ?? 30522),
     maxPositionEmbeddings: Number(rawConfig.max_position_embeddings ?? 512),
-    id2label: (rawConfig.id2label as Record<number, string>) ?? { 0: 'NEGATIVE', 1: 'POSITIVE' },
+    id2label: (rawConfig.id2label as Record<number, string>) ?? { 0: 'BIASED', 1: 'NEUTRAL' },
     raw: rawConfig,
   }
 
   const tk = tokenizer as {
     cls_token_id?: number
     sep_token_id?: number
+    bos_token_id?: number
+    eos_token_id?: number
     pad_token_id?: number
     unk_token_id?: number
     mask_token_id?: number
     model?: { type?: string }
   }
+  // BERT uses cls/sep, RoBERTa uses bos/eos for the same role
   const tokenizerInfo: TokenizerInfo = {
-    type: tk.model?.type ?? 'WordPiece',
-    clsId: tk.cls_token_id ?? 101,
-    sepId: tk.sep_token_id ?? 102,
-    padId: tk.pad_token_id ?? 0,
-    unkId: tk.unk_token_id ?? 100,
+    type: tk.model?.type ?? (config.modelType === 'roberta' ? 'BPE' : 'WordPiece'),
+    clsId: tk.cls_token_id ?? tk.bos_token_id ?? 0,
+    sepId: tk.sep_token_id ?? tk.eos_token_id ?? 2,
+    padId: tk.pad_token_id ?? 1,
+    unkId: tk.unk_token_id ?? 3,
     maskId: tk.mask_token_id ?? null,
   }
 
@@ -340,7 +370,10 @@ type EncoderInput = {
   token_type_ids?: { data: ArrayLike<number | bigint>; dims: number[] }
 }
 
-const SPECIAL_TOKEN_LITERALS = new Set(['[CLS]', '[SEP]', '[PAD]', '[UNK]'])
+const SPECIAL_TOKEN_LITERALS = new Set([
+  '[CLS]', '[SEP]', '[PAD]', '[UNK]', '[MASK]',
+  '<s>', '</s>', '<pad>', '<unk>', '<mask>',
+])
 
 function bigToNum(v: number | bigint): number {
   return typeof v === 'bigint' ? Number(v) : v

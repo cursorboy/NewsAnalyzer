@@ -19,7 +19,19 @@ import {
 const SAMPLE_TEXT =
   "The reckless GOP plan slammed working families on Thursday."
 
-const SPECIAL_TOKENS = new Set(['[CLS]', '[SEP]', '[PAD]', '[UNK]', '[MASK]'])
+const SPECIAL_TOKENS = new Set([
+  '[CLS]', '[SEP]', '[PAD]', '[UNK]', '[MASK]',
+  '<s>', '</s>', '<pad>', '<unk>', '<mask>',
+])
+
+// RoBERTa BPE marks word-initial pieces with `Ġ` (a U+0120 character that
+// stands in for a leading space). BERT WordPiece marks word-continuations
+// with `##`. Strip both for display.
+function displayToken(tok: string): string {
+  if (tok.startsWith('##')) return tok.slice(2)
+  if (tok.startsWith('Ġ')) return tok.slice(1)
+  return tok
+}
 
 interface ProgressFile {
   name: string
@@ -274,19 +286,20 @@ export default function InferenceLab() {
             </div>
             <div className="col-span-5 border-l border-ink/20 pl-10">
               <p className="font-serif text-[18px] italic text-ink/70 leading-snug">
-                Click <span className="not-italic">Load model</span> and a real DistilBERT
-                transformer downloads to your browser. Type a sentence, run a forward
-                pass, and watch the tokenizer, the logits, the SHA-256 hashes, and a
-                live occlusion-saliency map all light up — every number on this
-                page is computed from the model in front of you.
+                Click <span className="not-italic">Load model</span> and a real
+                DistilRoBERTa bias classifier downloads to your browser. Type
+                any sentence and the model — fine-tuned on Wikipedia
+                neutrality-edit pairs by Spinde et al. — labels it{' '}
+                <strong>BIASED</strong> or <strong>NEUTRAL</strong>. Every
+                number on this page is computed from the weights running in
+                front of you.
               </p>
               <p className="mt-4 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
-                Note · this is a sentiment companion (POSITIVE / NEGATIVE) — the
-                same architectural family our production bias model uses, but
-                trained on a public sentiment corpus so we can ship it to your
-                browser. The actual TheBiasGraph bias verdict runs server-side
-                on DeBERTa-v3 + LLM scoring with eight task heads. This lab
-                shows the plumbing, not the verdict.
+                Model · valurank/distilroberta-bias · DistilRoBERTa-base · 6
+                layers · 12 heads · trained on the Wiki-Neutrality Corpus
+                (~180k sentence pairs). The production TheBiasGraph score is a
+                separate server-side composite — this is the in-browser linguistic-bias
+                signal that the production system rolls up.
               </p>
             </div>
           </div>
@@ -295,12 +308,12 @@ export default function InferenceLab() {
             <ReadingGuide
               who="New to ML?"
               tone="serif"
-              body="Read the big italic line in each section — that's the gist. The labels POSITIVE / NEGATIVE are the model's mood verdict, not a political bias score. The orange bars under each word show how much the model's mood would change if that word disappeared — bigger bar, more weight."
+              body="Type a sentence and click Run. The model votes BIASED or NEUTRAL. The orange bars under each word show how much the verdict would change if that word disappeared — bigger bar means the model leaned harder on that word. Try the same sentence reworded neutrally and watch the bars shrink."
             />
             <ReadingGuide
               who="ML reader?"
               tone="mono"
-              body="DistilBERT-SST2 ONNX export emits logits only. Hidden states / attentions are not in the graph, so we don't fake them. Token importance comes from leave-one-out occlusion (mask each non-special token, Δp_argmax). window.tbgInfer(text) returns the same artifacts."
+              body="DistilRoBERTa fine-tuned on WNC (Recasens 2013 / Pryzant 2020 corpus). ONNX int8, ~82 MB. Token importance via leave-one-out occlusion (mask each non-special token, Δp_argmax). Logits + SHA-256 hashes on page. window.tbgInfer(text) returns the same artifacts."
             />
           </div>
         </motion.section>
@@ -524,14 +537,14 @@ function ModelCard({ loaded }: { loaded: LoadedRuntime | null }) {
       <div className="flex items-baseline justify-between gap-4">
         <div>
           <div className="font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
-            distilbert-base-uncased
+            valurank/distilroberta-bias
           </div>
           <h2 className="mt-2 font-display font-black text-ink tracking-display-tight leading-[1.0] text-[34px]">
-            A small sentiment companion.
+            A real bias classifier.
           </h2>
           <p className="mt-1 font-serif italic text-ink/60 text-[14px]">
-            Same transformer family as our production bias model — but
-            trained on movie reviews, not news. POSITIVE / NEGATIVE.
+            DistilRoBERTa fine-tuned on the Wiki-Neutrality Corpus —
+            sentence-level BIASED vs NEUTRAL.
           </p>
         </div>
         <a
@@ -762,9 +775,18 @@ function TokenizerPanel({
             chops your sentence into small pieces (a word, sometimes a
             fragment of a word) and looks each piece up in a dictionary of{' '}
             {loaded ? loaded.config.vocabSize.toLocaleString() : 'tens of thousands'}{' '}
-            entries. The numbers below each chip are those dictionary IDs.
-            Pieces that begin with <span className="font-mono">##</span> are
-            continuations of the previous word.
+            entries. The numbers below each chip are those dictionary IDs.{' '}
+            {loaded?.config.modelType === 'roberta' ? (
+              <>
+                A <span className="font-mono">Ġ</span> prefix marks the start
+                of a new word (it stands in for a leading space).
+              </>
+            ) : (
+              <>
+                Pieces that begin with <span className="font-mono">##</span>{' '}
+                are continuations of the previous word.
+              </>
+            )}
           </PlainEnglish>
         </div>
         <div className="col-span-4 text-right pt-1">
@@ -869,10 +891,10 @@ function ForwardPassPanel({
         A "forward pass" is one full read of your sentence by the network. The
         sentence enters as numbers, flows through{' '}
         {loaded ? loaded.config.numLayers : 'several'} stacked encoder layers,
-        and exits as a tiny vote between two labels: <strong>POSITIVE</strong>{' '}
-        and <strong>NEGATIVE</strong>. That's a sentiment vote — not a
-        political-bias vote. We then re-run the model with each non-special
-        word masked to measure how much that word actually moved the verdict.
+        and exits as a vote between two labels: <strong>BIASED</strong> and{' '}
+        <strong>NEUTRAL</strong>. We then re-run the model with each
+        non-special word masked to measure exactly which words pushed the
+        verdict where it ended up.
       </PlainEnglish>
 
       {runError && (
@@ -953,9 +975,10 @@ function ForwardPassPanel({
             </div>
           </div>
           <div className="mt-3 font-serif italic text-[12px] text-ink/55 leading-snug">
-            POSITIVE / NEGATIVE are the labels SST-2 ships with. Treat this as
-            a mood reading of the sentence. The production bias detector lives
-            on the server and is a different model entirely.
+            BIASED / NEUTRAL come from the model's training labels — Wikipedia
+            sentences before vs after a Neutral-Point-of-View edit. A high
+            BIASED score means the sentence reads like an editor would have
+            re-written it.
           </div>
         </div>
 
@@ -1077,7 +1100,7 @@ function OcclusionChart({ artifacts }: { artifacts: InferenceArtifacts | null })
           const isSpecial = SPECIAL_TOKENS.has(tok)
           const score = scores[i] ?? 0
           const widthPct = isSpecial ? 0 : (score / max) * 100
-          const display = tok.startsWith('##') ? tok.slice(2) : tok
+          const display = displayToken(tok)
           return (
             <motion.div
               key={`${i}-${tok}`}
@@ -1182,7 +1205,7 @@ function SaliencyChips({ tokens, scores }: { tokens: string[]; scores: number[] 
     <>
       {tokens.map((tok, i) => {
         const isSpecial = SPECIAL_TOKENS.has(tok)
-        const display = tok.startsWith('##') ? tok.slice(2) : tok
+        const display = displayToken(tok)
         const target = (scores[i] / max) * 0.7
         return (
           <motion.span
