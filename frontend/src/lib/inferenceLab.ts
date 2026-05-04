@@ -308,13 +308,17 @@ export interface TokenizedPreview {
   charSpans: [number, number][] // best-effort source character offsets
 }
 
-export function tokenizePreview(text: string): TokenizedPreview {
+export async function tokenizePreview(text: string): Promise<TokenizedPreview> {
   if (!_loaded) return { ids: [], tokens: [], charSpans: [] }
   const tokenizer = _loaded.tokenizer as {
-    (text: string): { input_ids: { data: BigInt64Array | number[] | Int32Array } }
+    (text: string): Promise<{ input_ids: { data: BigInt64Array | number[] | Int32Array } }> | { input_ids: { data: BigInt64Array | number[] | Int32Array } }
     model?: { convert_ids_to_tokens?: (ids: number[]) => string[] }
   }
-  const out = tokenizer(text)
+  const maybe = tokenizer(text)
+  const out =
+    maybe && typeof (maybe as Promise<{ input_ids: { data: BigInt64Array | number[] | Int32Array } }>).then === 'function'
+      ? await (maybe as Promise<{ input_ids: { data: BigInt64Array | number[] | Int32Array } }>)
+      : (maybe as { input_ids: { data: BigInt64Array | number[] | Int32Array } })
   const idsAny = out.input_ids.data as ArrayLike<number | bigint>
   const ids: number[] = []
   for (let i = 0; i < idsAny.length; i++) {
@@ -411,8 +415,16 @@ export async function runForwardPass(text: string): Promise<InferenceArtifacts> 
   if (!_loaded) throw new Error('Model not loaded yet — call loadModel() first.')
   const { tokenizer, model, config, tokenizerInfo } = _loaded
 
-  const tk = tokenizer as (text: string) => EncoderInput
-  const encoded = tk(text)
+  // transformers.js tokenizer call is async (returns a Promise of the encoded
+  // input). Calling it synchronously gives back the Promise itself, which the
+  // model can't unpack — ONNX errors with "Missing the following inputs:
+  // input_ids" because the Promise has no .input_ids property at runtime.
+  const tk = tokenizer as (text: string) => Promise<EncoderInput> | EncoderInput
+  const maybeEncoded = tk(text)
+  const encoded: EncoderInput =
+    maybeEncoded && typeof (maybeEncoded as Promise<EncoderInput>).then === 'function'
+      ? await (maybeEncoded as Promise<EncoderInput>)
+      : (maybeEncoded as EncoderInput)
 
   const callable = model as unknown as ModelCallable
 

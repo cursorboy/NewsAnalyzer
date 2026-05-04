@@ -172,15 +172,20 @@ export default function InferenceLab() {
   // live tokenization (debounced)
   useEffect(() => {
     if (!loaded) return
-    const t = setTimeout(() => {
+    let cancelled = false
+    const t = setTimeout(async () => {
       try {
-        const out = tokenizePreview(text)
+        const out = await tokenizePreview(text)
+        if (cancelled) return
         setTokenizedPreview({ tokens: out.tokens, ids: out.ids, spans: out.charSpans })
       } catch {
         // ignore
       }
     }, 120)
-    return () => clearTimeout(t)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
   }, [text, loaded])
 
   // count-up wall clock animation when artifacts arrive
