@@ -44,10 +44,13 @@ export type APIStatus = {
 // IMPORTANT: must be a real absolute URL, `new URL('/foo', '')` throws TypeError because
 // an empty string is not a valid base URL. Falling back to window.location.origin keeps
 // the URL constructor happy in production where API and frontend live on the same domain.
+// Production ALWAYS uses same-origin: api/index.py ships in the same Vercel project as
+// the SPA (see vercel.json), so /api/* is the only correct base. A stale VITE_API_BASE
+// pointing at a separate backend project would otherwise cause CORS + 404 failures.
 const RUNTIME_ORIGIN = typeof window !== 'undefined' ? window.location.origin : ''
-const API_BASE =
-  import.meta.env.VITE_API_BASE ||
-  (import.meta.env.PROD ? RUNTIME_ORIGIN : 'http://localhost:8000')
+const API_BASE = import.meta.env.PROD
+  ? RUNTIME_ORIGIN
+  : import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
 // Debug logging , only in dev. Production is silent so the API layer doesn't
 // draw attention or expose internal config.
