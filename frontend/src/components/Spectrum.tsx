@@ -20,9 +20,15 @@ function fallbackWhy(a: Article, idx: number): string {
   if (a.reasoning && a.reasoning.trim()) {
     return a.reasoning.split('\n')[0].slice(0, 180)
   }
-  const dist = Math.abs(a.spectrum_score)
-  const dir = a.spectrum_score < 0 ? 'left' : a.spectrum_score > 0 ? 'right' : 'center'
-  return `Loaded language density and economic framing place this clipping ${idx} steps from center, leaning ${dir} (${dist.toFixed(2)}).`
+  const dist = Math.abs(a.spectrum_score ?? 0)
+  const dir = (a.spectrum_score ?? 0) < 0 ? 'left' : (a.spectrum_score ?? 0) > 0 ? 'right' : 'center'
+  if (dist < 0.12) {
+    return 'No strongly charged framing detected in the headline or lede; reads near-neutral on visible cues.'
+  }
+  const intensity =
+    dist >= 0.7 ? 'pronounced' : dist >= 0.45 ? 'clear' : dist >= 0.25 ? 'modest' : 'slight'
+  const ord = idx > 0 ? ` (clipping ${idx})` : ''
+  return `Loaded language density and economic framing register a ${intensity} ${dir}-leaning signal${ord} (${dist.toFixed(2)}).`
 }
 
 // Pick at most one article per source. When multiple articles come from the
@@ -264,12 +270,16 @@ function Clipping({
         </div>
       </footer>
 
-      {isSelected && article.reasoning && (
+      {isSelected && (
         <div className="relative z-[2] mt-3 border-l-[3px] border-ink pl-4 font-serif text-[13px] leading-relaxed text-ink/85">
           <span className="block font-sans text-[9px] uppercase tracking-[0.22em] text-ink/55 mb-1">
             Network reasoning
           </span>
-          <p className="italic">{article.reasoning.split('\n')[0]}</p>
+          <p className="italic">
+            {article.reasoning && article.reasoning.trim()
+              ? article.reasoning.split('\n')[0]
+              : fallbackWhy(article, 0)}
+          </p>
         </div>
       )}
     </motion.article>

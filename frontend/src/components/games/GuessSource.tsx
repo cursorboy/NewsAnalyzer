@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Article } from '../../lib'
 import { searchArticles, fallbackSearch } from '../../lib'
+import { redactSourceFromTitle, redactSourceFromBody } from '../../lib/redactSource'
 import Masthead from '../Masthead'
 import BeatTheNetworkScorecard from '../BeatTheNetworkScorecard'
 import PlayHud from '../PlayHud'
@@ -70,6 +71,10 @@ export default function GuessSource() {
   const [roundDelta, setRoundDelta] = useState({ user: 0, model: 0 })
   const [burst, setBurst] = useState<{ show: boolean; pts: number; variant: 'correct' | 'wrong' }>({ show: false, pts: 0, variant: 'correct' })
   const [chosenTopic, setChosenTopic] = useState<string>(topicQuery)
+  // Tracks the most recent in-flight pool-fetch so a new startGame (or unmount)
+  // can abort the previous request. Without this a slow earlier fetch can
+  // still call setPool after a fresh game has already taken over.
+  const fetchControllerRef = useRef<AbortController | null>(null)
 
   const currentArticle = pool[score.currentRound - 1] ?? null
   const isCorrect = !!chosen && !!currentArticle && chosen.toLowerCase() === currentArticle.source.toLowerCase()
@@ -83,7 +88,7 @@ export default function GuessSource() {
   // clipping), but allow the same OUTLET to repeat across rounds. Each round's
   // 4-choice picker independently shuffles in 3 distractor outlets so the
   // player still gets 4 unique sources to choose from per round.
-  const fetchPool = async (topic: string): Promise<Article[]> => {
+  const fetchPool = async (topic: string, signal: AbortSignal): Promise<Article[]> => {
     const collected: Article[] = []
     const seenIds = new Set<string>()
 
@@ -108,9 +113,10 @@ export default function GuessSource() {
     // Pass 1: chosen topic only, must mention it.
     if (topic) {
       try {
-        const data = await searchArticles(topic)
+        const data = await searchArticles(topic, signal)
         for (const a of data.articles ?? []) safeAdd(a, true)
-      } catch {
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') throw err
         /* try next */
       }
     }
@@ -131,10 +137,11 @@ export default function GuessSource() {
         : shuffle(SEED_QUERIES)
       for (const q of queries) {
         try {
-          const data = await searchArticles(q)
+          const data = await searchArticles(q, signal)
           for (const a of data.articles ?? []) safeAdd(a, false)
           if (collected.length >= TOTAL_ROUNDS) break
-        } catch {
+        } catch (err) {
+          if ((err as Error)?.name === 'AbortError') throw err
           /* try next */
         }
       }
@@ -152,8 +159,14 @@ export default function GuessSource() {
     setChosenTopic(topic)
     setLoading(true)
     setLoadError(null)
+    // Abort any in-flight pool fetch from a previous topic before starting a
+    // new one — prevents a stale slow request from overwriting the new game.
+    fetchControllerRef.current?.abort()
+    const controller = new AbortController()
+    fetchControllerRef.current = controller
     try {
-      const list = await fetchPool(topic)
+      const list = await fetchPool(topic, controller.signal)
+      if (controller.signal.aborted) return
       if (list.length < TOTAL_ROUNDS) {
         setLoadError(`Only found ${list.length} clippings with known outlets. Try a different topic.`)
         setLoading(false)
@@ -163,12 +176,23 @@ export default function GuessSource() {
       score.reset()
       setChosen(null)
       setPhase('countdown')
-    } catch {
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return
       setLoadError('Failed to load clippings. Please try again.')
     } finally {
-      setLoading(false)
+      if (fetchControllerRef.current === controller) {
+        setLoading(false)
+      }
     }
   }
+
+  // Abort any pending pool fetch on unmount so a slow request doesn't try to
+  // update state on a torn-down tree.
+  useEffect(() => {
+    return () => {
+      fetchControllerRef.current?.abort()
+    }
+  }, [])
 
   const submit = (outlet: string) => {
     if (!currentArticle || chosen) return
@@ -352,7 +376,7 @@ export default function GuessSource() {
                   Clipping · masthead removed
                 </p>
                 <h2 className="mt-3 font-serif text-3xl md:text-4xl font-semibold leading-tight text-ink">
-                  {currentArticle.title}
+                  {redactSourceFromTitle(currentArticle.title, currentArticle.source)}
                 </h2>
                 {/* Use body excerpt when available, gives the player 2-3
                     paragraphs of real article text to base their guess on
@@ -360,7 +384,11 @@ export default function GuessSource() {
                     articles where the backend couldn't extract a body. */}
                 {(() => {
                   const hasBody = currentArticle.body && currentArticle.body.trim().length > 200
-                  const text = hasBody ? currentArticle.body! : currentArticle.snippet
+                  const rawText = hasBody ? currentArticle.body! : currentArticle.snippet
+                  // Mask the outlet's own self-references in the body so the
+                  // game can't be solved by spotting "Reuters reports" in the
+                  // article text. Title is redacted separately above.
+                  const text = redactSourceFromBody(rawText, currentArticle.source)
                   // Split body into paragraphs for display (the body is joined
                   // with double newlines from the BeautifulSoup extraction).
                   const paragraphs = text.split(/\n{2,}/).filter((p) => p.trim().length > 0)

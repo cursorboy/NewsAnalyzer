@@ -77,4 +77,7 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+# Playwright MCP local cache (do not commit, keep directory contents on disk)
+.playwright-mcp/
 "@ | Out-File -FilePath .gitignore -Encoding utf8

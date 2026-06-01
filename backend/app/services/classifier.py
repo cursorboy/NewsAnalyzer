@@ -82,7 +82,6 @@ OUTLET_BIAS: dict[str, float] = {
     "reason.com": 0.5,
     "nypost.com": 0.5,
     "washingtontimes.com": 0.6,
-    "theepochtimes.com": 0.5,
     "washingtonexaminer.com": 0.6,
     "spectator.org": 0.5,
     "city-journal.org": 0.5,
@@ -196,6 +195,9 @@ SYSTEM_PROMPT = (
     "every piece of US political journalism leans somewhere, and your job is to find where. "
     "Reuters and the AP are your nearest reference points for genuine 0.0 neutrality; "
     "almost everything else has detectable directional framing. "
+    "Scores in the [-0.1, +0.1] range are RARE — reserve them for genuine wire-service copy. "
+    "If you find yourself wanting to score 0.1 or -0.1, ask: would the opposite-leaning outlet "
+    "write this story the same way? If no, push the score further from center. "
     "You weigh word-level cues (loaded verbs, partisan adjectives), framing of policy "
     "(who is the actor, who is the victim, what is normalized vs. what is contested), "
     "source selection (which experts are quoted, which voices are dismissed or excluded), "
@@ -300,10 +302,16 @@ def _classify_with_ai_sync(title: str, snippet: str, source: str) -> Classificat
         analysis = json.loads(content)
         score = float(analysis["bias_score"])
 
-        # If we have an outlet prior, blend it with the LLM result so the model
-        # cannot wash a known-leaning outlet to neutral on a single soft article.
+        # Blend the outlet prior with the LLM's article-specific reading. The
+        # weighting (0.45 prior, 0.55 LLM) lets the article's framing dominate
+        # while keeping a known-leaning outlet from being washed to neutral on
+        # one soft piece. Previously this was 0.6/0.4, which pulled every
+        # article toward the outlet center and flattened the spectrum.
+        # No "decisiveness floor" or content-based nudge here — if the LLM
+        # genuinely reads neutral and the prior agrees, we trust that and
+        # avoid manufacturing skew from incidental word matches.
         if prior is not None:
-            score = 0.6 * prior + 0.4 * score
+            score = 0.45 * prior + 0.55 * score
 
         # Sanitize: if the LLM still leaks "based on the outlet's editorial
         # stance" boilerplate (rare with the strengthened prompt, but possible),

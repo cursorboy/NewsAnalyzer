@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import type { Article } from '../lib'
 import { searchArticles, fallbackSearch } from '../lib'
+import { redactSourceFromTitle, redactSourceFromBody } from '../lib/redactSource'
 import { useArticles } from '../context/ArticlesContext'
 import Masthead from './Masthead'
 import BeatTheNetworkScorecard from './BeatTheNetworkScorecard'
@@ -40,6 +41,19 @@ function biasLabel(score: number): string {
   return 'Far Right'
 }
 
+// Fisher-Yates shuffle. Replaces `.sort(() => Math.random() - 0.5)`, which
+// is biased (the JS sort comparator must be a total order; a random sign
+// breaks that contract and produces uneven distributions, especially for
+// short arrays where the comparator is invoked a fixed small number of times).
+function shuffle<T>(arr: T[]): T[] {
+  const a = arr.slice()
+  for (let i = a.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 export default function Game() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -55,7 +69,14 @@ export default function Game() {
   const [chosenTopic, setChosenTopic] = useState<string>(searchQuery)
 
   const [dragPosition, setDragPosition] = useState(0)
+  // Mirror dragPosition into a ref so the window-level mouseup handler (which
+  // is bound once on mount) can read the LATEST drag position instead of the
+  // value captured at handler-bind time. Fixes a stale-closure bug where the
+  // user's released marker snapped to whatever dragPosition was on the first
+  // render of the playing phase.
+  const dragPositionRef = useRef(0)
   const [isDragging, setIsDragging] = useState(false)
+  const isDraggingRef = useRef(false)
   const [userGuess, setUserGuess] = useState<number | null>(null)
   const [roundUserPoints, setRoundUserPoints] = useState(0)
   const [roundModelPoints, setRoundModelPoints] = useState(0)
@@ -63,6 +84,13 @@ export default function Game() {
   const [burst, setBurst] = useState<{ show: boolean; pts: number; variant: 'correct' | 'wrong' }>({ show: false, pts: 0, variant: 'correct' })
   const [markerLanded, setMarkerLanded] = useState(false)
   const spectrumRef = useRef<HTMLDivElement>(null)
+  // Track which article indices we've already served this game so the fallback
+  // path in advance() never hands the user the same clipping twice (until the
+  // pool is exhausted, at which point repeats are unavoidable).
+  const usedArticleIndicesRef = useRef<Set<number>>(new Set())
+  // Most recent in-flight fetch controller — aborted on a new startGame or on
+  // unmount so a slow request from a previous topic can't race the new one.
+  const fetchControllerRef = useRef<AbortController | null>(null)
 
   const processArticlesForGame = (incoming: Article[]): Article[] => {
     const known = incoming.filter(
@@ -73,15 +101,15 @@ export default function Game() {
       const center = known.filter((a) => a.spectrum_score > -0.3 && a.spectrum_score < 0.3)
       const right = known.filter((a) => a.spectrum_score >= 0.3)
       const mixed = [...left.slice(0, 4), ...center.slice(0, 3), ...right.slice(0, 4)]
-      return mixed.sort(() => Math.random() - 0.5).slice(0, TOTAL_ROUNDS)
+      return shuffle(mixed).slice(0, TOTAL_ROUNDS)
     }
     if (known.length >= 3) {
-      return known.sort(() => Math.random() - 0.5).slice(0, TOTAL_ROUNDS)
+      return shuffle(known).slice(0, TOTAL_ROUNDS)
     }
     return []
   }
 
-  const fetchGameArticles = async (topic: string): Promise<Article[]> => {
+  const fetchGameArticles = async (topic: string, signal: AbortSignal): Promise<Article[]> => {
     if (topic) {
       const cached = getCachedArticles(topic)
       if (cached && cached.length > 0) {
@@ -89,22 +117,24 @@ export default function Game() {
         if (processed.length >= 3) return processed
       }
       try {
-        const data = await searchArticles(topic)
+        const data = await searchArticles(topic, signal)
         cacheArticles(topic, data.articles)
         const processed = processArticlesForGame(data.articles)
         if (processed.length >= 3) return processed
-      } catch {
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') throw err
         /* fall through */
       }
       return fallbackSearch(topic).slice(0, TOTAL_ROUNDS)
     }
     const fallback = FALLBACK_TOPICS[Math.floor(Math.random() * FALLBACK_TOPICS.length)]
     try {
-      const data = await searchArticles(fallback)
+      const data = await searchArticles(fallback, signal)
       cacheArticles(fallback, data.articles)
       const processed = processArticlesForGame(data.articles)
       if (processed.length >= 3) return processed
-    } catch {
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') throw err
       /* fall through */
     }
     return fallbackSearch(fallback).slice(0, TOTAL_ROUNDS)
@@ -115,8 +145,16 @@ export default function Game() {
     setChosenTopic(topic)
     setLoading(true)
     setLoadError(null)
+    // Abort any in-flight fetch from a previous topic before starting a new one
+    // so a slow earlier request can't overwrite the new game's article list.
+    fetchControllerRef.current?.abort()
+    const controller = new AbortController()
+    fetchControllerRef.current = controller
     try {
-      const list = await fetchGameArticles(topic)
+      const list = await fetchGameArticles(topic, controller.signal)
+      // If we were aborted mid-flight, bail out silently — a newer startGame
+      // is already in charge.
+      if (controller.signal.aborted) return
       if (list.length === 0) {
         setLoadError('Could not find enough scored articles. Try again.')
         setLoading(false)
@@ -124,15 +162,20 @@ export default function Game() {
       }
       setArticles(list)
       setCurrentArticle(list[0])
+      usedArticleIndicesRef.current = new Set([0])
       score.reset()
       setUserGuess(null)
       setDragPosition(0)
+      dragPositionRef.current = 0
       setMarkerLanded(false)
       setPhase('countdown')
-    } catch {
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return
       setLoadError('Failed to load articles. Please try again.')
     } finally {
-      setLoading(false)
+      if (fetchControllerRef.current === controller) {
+        setLoading(false)
+      }
     }
   }
 
@@ -172,10 +215,36 @@ export default function Game() {
       return
     }
     const nextIdx = score.currentRound
-    const next = articles[nextIdx] ?? articles[Math.floor(Math.random() * articles.length)]
+    let next: Article | undefined = articles[nextIdx]
+    let chosenIdx = nextIdx
+    if (!next) {
+      // Sequential index is past the end of the list. Pick a random index we
+      // haven't shown yet, so the player doesn't see the same clipping twice
+      // within a single game. If we've shown every article already, allow
+      // repeats (degraded UX > crashing the game).
+      const used = usedArticleIndicesRef.current
+      const unused: number[] = []
+      for (let i = 0; i < articles.length; i += 1) {
+        if (!used.has(i)) unused.push(i)
+      }
+      if (unused.length > 0) {
+        chosenIdx = unused[Math.floor(Math.random() * unused.length)]
+      } else {
+        chosenIdx = Math.floor(Math.random() * articles.length)
+      }
+      next = articles[chosenIdx]
+    }
+    if (!next) {
+      // Pool is genuinely empty — bail to game over rather than crashing.
+      score.nextRound()
+      setPhase('gameOver')
+      return
+    }
+    usedArticleIndicesRef.current.add(chosenIdx)
     setCurrentArticle(next)
     setUserGuess(null)
     setDragPosition(0)
+    dragPositionRef.current = 0
     setMarkerLanded(false)
     setRoundUserPoints(0)
     setRoundModelPoints(0)
@@ -188,54 +257,70 @@ export default function Game() {
     const rect = spectrumRef.current.getBoundingClientRect()
     const x = clientX - rect.left
     const pos = Math.max(-1, Math.min(1, (x / rect.width) * 2 - 1))
+    dragPositionRef.current = pos
     setDragPosition(pos)
+  }
+
+  const beginDrag = () => {
+    isDraggingRef.current = true
+    setIsDragging(true)
+    setMarkerLanded(false)
   }
 
   const onMouseDown = (e: React.MouseEvent) => {
     if (phase !== 'playing') return
-    setIsDragging(true)
-    setMarkerLanded(false)
+    beginDrag()
     updatePosition(e.clientX)
   }
   const onMouseMove = (e: React.MouseEvent) => {
-    if (isDragging && phase === 'playing') updatePosition(e.clientX)
+    if (isDraggingRef.current && phase === 'playing') updatePosition(e.clientX)
   }
-  const onMouseUp = () => {
-    if (!isDragging) return
-    setIsDragging(false)
-    setUserGuess(dragPosition)
-    setMarkerLanded(true)
-    sfx.click()
-  }
+  // Local mouseup intentionally removed — the window-level listener below
+  // handles drag release whether the cursor is inside or outside the
+  // spectrum bounds. Keeping both led to double-firing (setUserGuess once
+  // with the old position, again with the latest) and the marker would
+  // visibly snap.
   const onTouchStart = (e: React.TouchEvent) => {
     if (phase !== 'playing') return
-    setIsDragging(true)
-    setMarkerLanded(false)
+    beginDrag()
     updatePosition(e.touches[0].clientX)
   }
   const onTouchMove = (e: React.TouchEvent) => {
-    if (isDragging && phase === 'playing') updatePosition(e.touches[0].clientX)
+    if (isDraggingRef.current && phase === 'playing') updatePosition(e.touches[0].clientX)
   }
   const onTouchEnd = () => {
-    if (!isDragging) return
+    if (!isDraggingRef.current) return
+    isDraggingRef.current = false
     setIsDragging(false)
-    setUserGuess(dragPosition)
+    setUserGuess(dragPositionRef.current)
     setMarkerLanded(true)
     sfx.click()
   }
 
+  // Register the window-level mouseup listener ONCE on mount. The handler
+  // reads dragPositionRef.current so it always sees the latest position
+  // instead of the value captured at bind time (a stale-closure bug that
+  // caused the released marker to snap to the position from the first render).
   useEffect(() => {
     function up() {
-      if (isDragging) {
-        setIsDragging(false)
-        setUserGuess(dragPosition)
-        setMarkerLanded(true)
-        sfx.click()
-      }
+      if (!isDraggingRef.current) return
+      isDraggingRef.current = false
+      setIsDragging(false)
+      setUserGuess(dragPositionRef.current)
+      setMarkerLanded(true)
+      sfx.click()
     }
     window.addEventListener('mouseup', up)
     return () => window.removeEventListener('mouseup', up)
-  }, [isDragging, dragPosition])
+  }, [])
+
+  // Abort any in-flight game fetch when the component unmounts so a slow
+  // request doesn't try to update state on a torn-down tree.
+  useEffect(() => {
+    return () => {
+      fetchControllerRef.current?.abort()
+    }
+  }, [])
 
   if (phase === 'menu') {
     return (
@@ -394,14 +479,14 @@ export default function Game() {
                   </p>
                 </div>
                 <h2 className="mt-2 font-display text-[32px] md:text-[44px] font-black leading-[1.04] tracking-mega-tight text-ink">
-                  {currentArticle.title}
+                  {redactSourceFromTitle(currentArticle.title, currentArticle.source)}
                 </h2>
                 <p className="mt-3 font-serif text-lg italic leading-snug text-ink/65 md:text-xl">
                   Place this clipping on the comparison spectrum.
                 </p>
                 <div className="mt-4 border-t border-ink/30" aria-hidden />
                 <p className="mt-5 max-w-prose font-serif text-[16px] leading-[1.7] text-ink/85 md:text-[17px] md:leading-[1.75] line-clamp-4">
-                  {currentArticle.snippet}
+                  {redactSourceFromBody(currentArticle.snippet, currentArticle.source)}
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-[10px] uppercase tracking-[0.22em] text-ink/55">
                   <a
@@ -426,7 +511,6 @@ export default function Game() {
                   ref={spectrumRef}
                   onMouseDown={onMouseDown}
                   onMouseMove={onMouseMove}
-                  onMouseUp={onMouseUp}
                   onTouchStart={onTouchStart}
                   onTouchMove={onTouchMove}
                   onTouchEnd={onTouchEnd}

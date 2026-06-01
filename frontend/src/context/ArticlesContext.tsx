@@ -69,7 +69,11 @@ export function ArticlesProvider({ children }: { children: ReactNode }) {
       const entry = cachedArticles[query]
       if (!entry) return undefined
       if (Date.now() - entry.cachedAt > maxAgeMs) return undefined
-      return entry.articles
+      // Defensive copy: callers occasionally mutate (sort/shuffle/splice) the
+      // returned list while shaping it for a game round. Mutating the cache
+      // entry in place would corrupt the React state map and cause stale
+      // reads on the next read of the same query.
+      return [...entry.articles]
     },
     [cachedArticles],
   )

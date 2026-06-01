@@ -1,7 +1,10 @@
+import hashlib
+import ipaddress
 import json
 import asyncio
 import os
 import re
+import socket
 import sys
 import time
 from typing import Optional
@@ -42,25 +45,111 @@ def _zero_dimensions() -> dict:
     }
 
 
+def _is_safe_public_ip(ip_str: str) -> bool:
+    """Return True only if the IP is a routable public address. Rejects
+    loopback, private, link-local, multicast, reserved, unspecified, and
+    site-local ranges (IPv4 + IPv6). Used by _fetch_url to defeat SSRF."""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    if (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    ):
+        return False
+    # IPv6-specific extras not covered by the flags above on older Pythons.
+    if isinstance(ip, ipaddress.IPv6Address):
+        if ip.is_site_local:  # deprecated fec0::/10 but still worth blocking
+            return False
+        # IPv4-mapped IPv6 — re-check the embedded v4 address.
+        if ip.ipv4_mapped is not None:
+            return _is_safe_public_ip(str(ip.ipv4_mapped))
+    return True
+
+
+def _url_host_is_safe(url: str) -> bool:
+    """Validate scheme + resolve hostname and confirm every resolved IP is
+    a routable public address. Returns False to indicate the request must
+    not be issued."""
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return False
+    if parsed.scheme not in ("http", "https"):
+        return False
+    host = parsed.hostname
+    if not host:
+        return False
+    # Reject bare IP literals that fall in blocked ranges before DNS.
+    try:
+        ipaddress.ip_address(host)
+        return _is_safe_public_ip(host)
+    except ValueError:
+        pass
+    # Resolve and check every address the hostname resolves to (defeats
+    # DNS-rebinding-style tricks at fetch time).
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except Exception:
+        return False
+    for info in infos:
+        sockaddr = info[4]
+        ip_str = sockaddr[0]
+        if not _is_safe_public_ip(ip_str):
+            return False
+    return True
+
+
 def _fetch_url(url: str) -> tuple[str, str]:
     """Fetch a URL and extract (title, body_text). Best effort. Returns
-    ("", "") on failure."""
+    ("", "") on failure or when the URL fails SSRF validation."""
     try:
         import httpx
         from bs4 import BeautifulSoup
     except Exception:
         return "", ""
 
+    # SSRF guard: validate scheme + resolve and inspect every IP before
+    # the initial request, and re-validate after each redirect hop.
+    if not _url_host_is_safe(url):
+        return "", ""
+
     try:
         # 8s ceiling on URL body fetch. Slow paywalled / anti-bot sites take
         # ~15-30s; we'd rather fall back to snippet than blow the function
         # budget on a single page.
-        with httpx.Client(timeout=8.0, follow_redirects=True, headers={
+        # follow_redirects=False so we can re-run _url_host_is_safe on each
+        # hop's Location header. Cap hops at 5 to avoid loops.
+        with httpx.Client(timeout=8.0, follow_redirects=False, headers={
             "User-Agent": "Mozilla/5.0 (compatible; NewsAnalyzer/1.0)",
         }) as client:
-            r = client.get(url)
-            r.raise_for_status()
-            html = r.text
+            current_url = url
+            html = ""
+            for _ in range(6):  # initial + up to 5 redirects
+                r = client.get(current_url)
+                if r.status_code in (301, 302, 303, 307, 308):
+                    next_url = r.headers.get("location")
+                    if not next_url:
+                        return "", ""
+                    # httpx resolves relative locations via r.url; use that.
+                    try:
+                        resolved = str(httpx.URL(current_url).join(next_url))
+                    except Exception:
+                        return "", ""
+                    if not _url_host_is_safe(resolved):
+                        return "", ""
+                    current_url = resolved
+                    continue
+                r.raise_for_status()
+                html = r.text
+                break
+            else:
+                return "", ""
     except Exception:
         return "", ""
 
@@ -199,6 +288,11 @@ def _build_article_detail(article_id: str, title: str, body: str, url: str = "",
 
     text_for_linguist = body or title
 
+    # Flag set by _run_all when the asyncio gather hits its 35s ceiling so
+    # the caller (and the frontend) can distinguish a fully-scored response
+    # from a partial one that fell back to safe defaults.
+    degraded_flag = {"value": False}
+
     async def _run_all():
         cls_t = classify_with_ai(title or "", snippet, src)
         dim_t = score_dimensions(title or "", body or snippet, src)
@@ -214,6 +308,7 @@ def _build_article_detail(article_id: str, title: str, body: str, url: str = "",
             return await asyncio.wait_for(gather, timeout=35.0)
         except asyncio.TimeoutError:
             print("Debug: _build_article_detail gather hit 35s timeout — returning partial")
+            degraded_flag["value"] = True
             return [TimeoutError("gather timeout")] * 5
 
     results = asyncio.run(_run_all())
@@ -279,7 +374,25 @@ def _build_article_detail(article_id: str, title: str, body: str, url: str = "",
         "loaded_phrases": loaded_phrases,
         "source_diversity_detail": source_diversity,
         "headline_body_skew_detail": headline_body_skew,
+        # True when one or more scoring stages timed out and we filled the
+        # gaps with safe defaults — the frontend can surface this rather
+        # than rendering "0.0 across the board" as if it were the answer.
+        "degraded": degraded_flag["value"],
     }
+
+
+def _cors_origin() -> str:
+    """Resolve the Access-Control-Allow-Origin value. Prefer the configured
+    frontend origin (locks the API down to a single trusted SPA); fall back
+    to '*' for local dev / unconfigured deploys so the dev loop keeps working."""
+    try:
+        from app.config import settings
+        origin = (settings.frontend_origin or "").strip()
+        if origin:
+            return origin
+    except Exception:
+        pass
+    return "*"
 
 
 class handler(BaseHTTPRequestHandler):
@@ -294,7 +407,7 @@ class handler(BaseHTTPRequestHandler):
 
     def _send_cors_response(self):
         self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Origin', _cors_origin())
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.end_headers()
@@ -322,7 +435,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
         self.send_header('CDN-Cache-Control', 'no-store')
         self.send_header('Vercel-CDN-Cache-Control', 'no-store')
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Origin', _cors_origin())
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.end_headers()
@@ -447,7 +560,10 @@ class handler(BaseHTTPRequestHandler):
         title = (body.get('title') or '').strip()
 
         # Cache by stable hash of inputs. Same paste → same response.
-        cache_key = f"analyze:{hash((url, title, text[:300]))}"
+        # Hash the full text body (sha256, truncated to 16 hex chars) so two
+        # users with the same URL/title but different bodies don't collide.
+        body_digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16] if text else ""
+        cache_key = f"analyze:{url}|{title}|{body_digest}"
         cached = _cache_get(cache_key)
         if cached is not None:
             return cached  # type: ignore[return-value]
@@ -457,11 +573,18 @@ class handler(BaseHTTPRequestHandler):
             if not title:
                 title = fetched_title
             text = fetched_body
+            # Re-hash now that we have a body, so the cache key reflects what
+            # we actually classified instead of the empty-body request.
+            body_digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16] if text else ""
+            cache_key = f"analyze:{url}|{title}|{body_digest}"
 
         if not text and not title:
             return {"error": "provide url or text"}
 
-        article_id = f"analyze_{abs(hash((url, title, text[:100]))) % 10**8}"
+        article_id_digest = hashlib.sha256(
+            f"{url}|{title}|{text}".encode("utf-8")
+        ).hexdigest()[:12]
+        article_id = f"analyze_{article_id_digest}"
         result = _build_article_detail(article_id, title, text, url=url)
         _cache_put(cache_key, result)
         return result
@@ -509,10 +632,7 @@ class handler(BaseHTTPRequestHandler):
     async def _search_and_classify(self, query: str):
         """Search for news and classify each article"""
         try:
-            from app.config import settings
-            print(f"Debug: OpenAI API key configured: {bool(settings.openai_api_key)}")
-            if settings.openai_api_key:
-                print(f"Debug: OpenAI API key starts with: {settings.openai_api_key[:10]}...")
+            from app.config import settings  # noqa: F401  (kept for downstream usage; no longer logged)
 
             # Brave news caps at 20 per call. Fetch the max so the spectrum has
             # enough outlet variety even after frontend per-source dedup.
